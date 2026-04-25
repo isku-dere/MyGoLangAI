@@ -135,7 +135,7 @@ export default {
 
     const summarizeLocalTitle = (text) => {
       const cleaned = String(text || '').replace(/[#*_`>~\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim()
-      if (!cleaned) return '???'
+      if (!cleaned) return 'New Chat'
       return cleaned.length > 24 ? `${cleaned.slice(0, 24)}...` : cleaned
     }
 
