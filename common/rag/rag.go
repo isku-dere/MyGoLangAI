@@ -117,6 +117,14 @@ func DeleteIndex(ctx context.Context, username string) error {
 	return nil
 }
 
+func DeleteDocument(ctx context.Context, username, documentID string) error {
+	key := fmt.Sprintf("%s%s", redis.GenerateIndexNamePrefix(username), documentID)
+	if err := redisPkg.Rdb.Del(ctx, key).Err(); err != nil {
+		return fmt.Errorf("failed to delete redis document: %w", err)
+	}
+	return nil
+}
+
 func NewRAGQuery(ctx context.Context, username string) (*RAGQuery, error) {
 	cfg := config.GetConfig()
 	apiKey := os.Getenv("OPENAI_API_KEY")

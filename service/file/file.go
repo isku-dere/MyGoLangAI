@@ -83,3 +83,34 @@ func UploadRagFile(username string, file *multipart.FileHeader) (*model.RAGDocum
 	log.Printf("RAG document uploaded and indexed successfully: %s", documentID)
 	return document, nil
 }
+
+func ListRagDocuments(username string) ([]model.RAGDocument, error) {
+	return ragdocument.ListByUserName(username)
+}
+
+func GetRagDocument(username, documentID string) (*model.RAGDocument, error) {
+	return ragdocument.GetByUserNameAndID(username, documentID)
+}
+
+func DeleteRagDocument(username, documentID string) error {
+	document, err := ragdocument.GetByUserNameAndID(username, documentID)
+	if err != nil {
+		return err
+	}
+
+	if err := rag.DeleteDocument(context.Background(), username, documentID); err != nil {
+		return err
+	}
+
+	if err := ragdocument.DeleteByID(username, documentID); err != nil {
+		return err
+	}
+
+	if document.FilePath != "" {
+		if err := os.Remove(document.FilePath); err != nil && !os.IsNotExist(err) {
+			log.Printf("Failed to remove RAG document file %s: %v", document.FilePath, err)
+		}
+	}
+
+	return nil
+}

@@ -16,6 +16,12 @@ func GetByID(id string) (*model.RAGDocument, error) {
 	return &document, err
 }
 
+func GetByUserNameAndID(username, id string) (*model.RAGDocument, error) {
+	var document model.RAGDocument
+	err := mysql.DB.Where("user_name = ? AND id = ?", username, id).First(&document).Error
+	return &document, err
+}
+
 func ListByUserName(username string) ([]model.RAGDocument, error) {
 	var documents []model.RAGDocument
 	err := mysql.DB.Where("user_name = ?", username).Order("created_at desc").Find(&documents).Error
