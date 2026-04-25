@@ -1,14 +1,11 @@
 package ocr
 
 import (
-	"GopherAI/common/rag"
 	"GopherAI/config"
 	ocrdao "GopherAI/dao/ocr_task"
-	ragdocument "GopherAI/dao/rag_document"
 	"GopherAI/model"
 	"GopherAI/utils"
 	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -27,8 +24,6 @@ const (
 	TaskStatusRunning   = "running"
 	TaskStatusSucceeded = "succeeded"
 	TaskStatusFailed    = "failed"
-
-	DocumentSourceOCR = "ocr"
 )
 
 type layoutParsingResponse struct {
@@ -109,37 +104,8 @@ func processTask(taskID, username string) {
 		return
 	}
 
-	documentID := utils.GenerateUUID()
-	document := &model.RAGDocument{
-		ID:       documentID,
-		UserName: username,
-		Title:    strings.TrimSuffix(filepath.Base(task.FileName), filepath.Ext(task.FileName)),
-		FileName: task.FileName,
-		FilePath: task.FilePath,
-		Source:   DocumentSourceOCR,
-		Content:  markdown,
-	}
-
-	if _, err := ragdocument.Create(document); err != nil {
-		markFailed(task, err)
-		return
-	}
-
-	indexer, err := rag.NewRAGIndexer(username, config.GetConfig().RagModelConfig.RagEmbeddingModel)
-	if err != nil {
-		_ = ragdocument.DeleteByID(username, documentID)
-		markFailed(task, err)
-		return
-	}
-
-	if err := indexer.IndexText(context.Background(), documentID, document.Content, task.FilePath); err != nil {
-		_ = ragdocument.DeleteByID(username, documentID)
-		markFailed(task, err)
-		return
-	}
-
 	task.Status = TaskStatusSucceeded
-	task.DocumentID = documentID
+	task.DocumentID = ""
 	task.Result = markdown
 	task.ErrorMsg = ""
 	if err := ocrdao.Update(task); err != nil {

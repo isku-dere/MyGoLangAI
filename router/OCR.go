@@ -11,4 +11,6 @@ func OCRRouter(r *gin.RouterGroup) {
 	r.GET("/tasks/:id", ocr.GetOCRTask)
 	r.GET("/tasks/:id/events", ocr.StreamOCRTaskEvents)
 	r.POST("/notes/summarize", ocr.SummarizeOCRNotes)
+	r.POST("/notes/summarize/stream", ocr.StreamSummarizeOCRNotes)
+	r.POST("/notes/save", ocr.SaveOCRNote)
 }
