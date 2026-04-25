@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -32,6 +33,9 @@ type (
 
 	ListRagDocumentsResponse struct {
 		Documents []RAGDocumentSummary `json:"documents"`
+		Total     int64                `json:"total"`
+		Page      int                  `json:"page"`
+		PageSize  int                  `json:"page_size"`
 		controller.Response
 	}
 
@@ -81,7 +85,11 @@ func ListRagDocuments(c *gin.Context) {
 		return
 	}
 
-	documents, err := file.ListRagDocuments(username)
+	page := parsePositiveInt(c.Query("page"), 1)
+	pageSize := parsePositiveInt(c.Query("page_size"), 10)
+	source := c.Query("source")
+
+	documents, total, err := file.ListRagDocumentsPaged(username, page, pageSize, source)
 	if err != nil {
 		log.Println("ListRagDocuments fail ", err)
 		c.JSON(http.StatusOK, res.CodeOf(code.CodeServerBusy))
@@ -93,6 +101,9 @@ func ListRagDocuments(c *gin.Context) {
 	for _, document := range documents {
 		res.Documents = append(res.Documents, toRAGDocumentSummary(document))
 	}
+	res.Total = total
+	res.Page = page
+	res.PageSize = pageSize
 	c.JSON(http.StatusOK, res)
 }
 
@@ -164,4 +175,15 @@ func toRAGDocumentSummary(document model.RAGDocument) RAGDocumentSummary {
 		CreatedAt: document.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt: document.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}
+}
+
+func parsePositiveInt(value string, fallback int) int {
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 {
+		return fallback
+	}
+	return parsed
 }

@@ -88,6 +88,19 @@ func ListRagDocuments(username string) ([]model.RAGDocument, error) {
 	return ragdocument.ListByUserName(username)
 }
 
+func ListRagDocumentsPaged(username string, page, pageSize int, source string) ([]model.RAGDocument, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	return ragdocument.ListByUserNamePaged(username, page, pageSize, source)
+}
+
 func GetRagDocument(username, documentID string) (*model.RAGDocument, error) {
 	return ragdocument.GetByUserNameAndID(username, documentID)
 }
