@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/BurntSushi/toml"
 )
@@ -93,7 +94,29 @@ func InitConfig() error {
 		log.Fatal(err.Error())
 		return err
 	}
+	applyEnvOverrides(config)
 	return nil
+}
+
+func applyEnvOverrides(c *Config) {
+	if value := os.Getenv("MYSQL_ROOT_PASSWORD"); value != "" {
+		c.MysqlPassword = value
+	}
+	if value := os.Getenv("MYSQL_DATABASE"); value != "" {
+		c.MysqlDatabaseName = value
+	}
+	if value := os.Getenv("RABBITMQ_DEFAULT_USER"); value != "" {
+		c.RabbitmqUsername = value
+	}
+	if value := os.Getenv("RABBITMQ_DEFAULT_PASS"); value != "" {
+		c.RabbitmqPassword = value
+	}
+	if value := os.Getenv("EMAIL_AUTH_CODE"); value != "" {
+		c.Authcode = value
+	}
+	if value := os.Getenv("EMAIL_ADDRESS"); value != "" {
+		c.Email = value
+	}
 }
 
 func GetConfig() *Config {

@@ -22,6 +22,8 @@ services:
         condition: service_healthy
     expose:
       - "9090"
+    volumes:
+      - ${CONFIG_FILE:-../config/config.docker.toml}:/app/config/config.toml:ro
 
   mysql:
     image: mysql:8.0
