@@ -13,7 +13,24 @@
           :class="['session-item', { active: currentSessionId === session.id }]"
           @click="switchSession(session.id)"
         >
-          {{ session.name || `会话 ${session.id}` }}
+          <div v-if="editingSessionId === session.id" class="session-edit" @click.stop>
+            <input
+              v-model="editingTitle"
+              class="session-title-input"
+              maxlength="60"
+              @keydown.enter.prevent.stop="saveSessionTitle(session)"
+              @keydown.esc.prevent.stop="cancelRename"
+            />
+            <button class="session-action" @click.stop="saveSessionTitle(session)">Save</button>
+            <button class="session-action muted" @click.stop="cancelRename">Cancel</button>
+          </div>
+          <div v-else class="session-row">
+            <span class="session-title" :title="session.name || `Chat ${session.id}`">{{ session.name || `Chat ${session.id}` }}</span>
+            <span class="session-actions">
+              <button class="session-action" @click.stop="startRename(session)">Rename</button>
+              <button class="session-action danger" @click.stop="deleteSession(session)">Delete</button>
+            </span>
+          </div>
         </li>
       </ul>
     </div>
@@ -103,6 +120,8 @@ export default {
     const isStreaming = ref(false)
     const uploading = ref(false)
     const fileInput = ref(null)
+    const editingSessionId = ref(null)
+    const editingTitle = ref('')
 
 
     const renderMarkdown = (text) => {
@@ -112,6 +131,12 @@ export default {
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/`(.*?)`/g, '<code>$1</code>')
         .replace(/\n/g, '<br>')
+    }
+
+    const summarizeLocalTitle = (text) => {
+      const cleaned = String(text || '').replace(/[#*_`>~\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim()
+      if (!cleaned) return '???'
+      return cleaned.length > 24 ? `${cleaned.slice(0, 24)}...` : cleaned
     }
 
     const playTTS = async (text) => {
@@ -233,6 +258,67 @@ export default {
       currentMessages.value = [...(sessions.value[sessionId].messages || [])]
       await nextTick()
       scrollToBottom()
+    }
+
+    const startRename = (session) => {
+      editingSessionId.value = session.id
+      editingTitle.value = session.name || ''
+      nextTick(() => {
+        const input = document.querySelector('.session-title-input')
+        if (input) input.focus()
+      })
+    }
+
+    const cancelRename = () => {
+      editingSessionId.value = null
+      editingTitle.value = ''
+    }
+
+    const saveSessionTitle = async (session) => {
+      const title = editingTitle.value.trim()
+      if (!title) {
+        ElMessage.warning('Title cannot be empty')
+        return
+      }
+      try {
+        const response = await api.put('/AI/chat/session/title', { sessionId: session.id, title })
+        if (response.data && response.data.status_code === 1000) {
+          sessions.value[session.id].name = response.data.session?.name || title
+          cancelRename()
+          ElMessage.success('Title updated')
+        } else {
+          ElMessage.error(response.data?.status_msg || 'Failed to update title')
+        }
+      } catch (error) {
+        console.error('Rename session error:', error)
+        ElMessage.error('Failed to update title')
+      }
+    }
+
+    const deleteSession = async (session) => {
+      if (!window.confirm(`Delete session '${session.name || session.id}'?`)) return
+      try {
+        const response = await api.delete('/AI/chat/session', { data: { sessionId: session.id } })
+        if (response.data && response.data.status_code === 1000) {
+          delete sessions.value[session.id]
+          if (currentSessionId.value === session.id) {
+            const remaining = Object.values(sessions.value)
+            if (remaining.length > 0) {
+              await switchSession(remaining[0].id)
+            } else {
+              currentSessionId.value = null
+              currentMessages.value = []
+              tempSession.value = false
+            }
+          }
+          ElMessage.success('Session deleted')
+        } else {
+          ElMessage.error(response.data?.status_msg || 'Failed to delete session')
+        }
+      } catch (error) {
+        console.error('Delete session error:', error)
+        ElMessage.error('Failed to delete session')
+      }
     }
 
     const syncHistory = async () => {
@@ -398,7 +484,7 @@ export default {
                     if (tempSession.value) {
                       sessions.value[newSid] = {
                         id: newSid,
-                        name: '新会话',
+                        name: summarizeLocalTitle(question),
                         messages: [...currentMessages.value]
                       }
                       currentSessionId.value = newSid
@@ -473,7 +559,7 @@ export default {
 
           sessions.value[sessionId] = {
             id: sessionId,
-            name: '新会话',
+            name: summarizeLocalTitle(question),
             messages: [ { role: 'user', content: question }, aiMessage ]
           }
           currentSessionId.value = sessionId
@@ -588,8 +674,14 @@ export default {
       isStreaming,
       uploading,
       fileInput,
+      editingSessionId,
+      editingTitle,
       renderMarkdown,
       playTTS,
+      startRename,
+      cancelRename,
+      saveSessionTitle,
+      deleteSession,
       createNewSession,
       switchSession,
       syncHistory,
@@ -706,6 +798,75 @@ export default {
   transition: all 0.2s ease;
   position: relative;
   color: #2c3e50;
+}
+
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.session-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  flex: 0 0 auto;
+  transition: opacity 0.2s ease;
+}
+
+.session-item:hover .session-actions,
+.session-item.active .session-actions {
+  opacity: 1;
+}
+
+.session-edit {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.session-title-input {
+  min-width: 0;
+  border: 1px solid rgba(102, 126, 234, 0.35);
+  border-radius: 8px;
+  padding: 7px 8px;
+  outline: none;
+}
+
+.session-action {
+  border: none;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  white-space: nowrap;
+}
+
+.session-action.muted {
+  color: #606266;
+  background: rgba(96, 98, 102, 0.1);
+}
+
+.session-action.danger {
+  color: #c0392b;
+  background: rgba(192, 57, 43, 0.1);
+}
+
+.session-item.active .session-action {
+  background: rgba(255,255,255,0.2);
+  color: white;
 }
 
 .session-item.active {

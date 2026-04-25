@@ -15,6 +15,8 @@ func AIRouter(r *gin.RouterGroup) {
 		r.POST("/chat/send-new-session", session.CreateSessionAndSendMessage)
 		r.POST("/chat/send", session.ChatSend)
 		r.POST("/chat/history", session.ChatHistory)
+		r.PUT("/chat/session/title", session.RenameSession)
+		r.DELETE("/chat/session", session.DeleteSession)
 
 		// TTS相关接口
 		r.POST("/chat/tts", tts.CreateTTSTask)

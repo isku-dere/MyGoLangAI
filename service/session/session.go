@@ -3,11 +3,14 @@ package session
 import (
 	"GopherAI/common/aihelper"
 	"GopherAI/common/code"
-	"GopherAI/dao/session"
+	messagedao "GopherAI/dao/message"
+	sessiondao "GopherAI/dao/session"
 	"GopherAI/model"
 	"context"
 	"log"
 	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -15,31 +18,29 @@ import (
 var ctx = context.Background()
 
 func GetUserSessionsByUserName(userName string) ([]model.SessionInfo, error) {
-	//获取用户的所有会话ID
-
-	manager := aihelper.GetGlobalManager()
-	Sessions := manager.GetUserSessions(userName)
-
-	var SessionInfos []model.SessionInfo
-
-	for _, session := range Sessions {
-		SessionInfos = append(SessionInfos, model.SessionInfo{
-			SessionID: session,
-			Title:     session, // 暂时用sessionID作为标题，后续重构需要的时候可以更改
-		})
+	sessions, err := sessiondao.GetSessionsByUserName(userName)
+	if err != nil {
+		return nil, err
 	}
 
-	return SessionInfos, nil
+	infos := make([]model.SessionInfo, 0, len(sessions))
+	for _, s := range sessions {
+		title := strings.TrimSpace(s.Title)
+		if title == "" {
+			title = "New Chat"
+		}
+		infos = append(infos, model.SessionInfo{SessionID: s.ID, Title: title})
+	}
+	return infos, nil
 }
-
 func CreateSessionAndSendMessage(userName string, userQuestion string, modelType string) (string, string, code.Code) {
 	//1：创建一个新的会话
 	newSession := &model.Session{
 		ID:       uuid.New().String(),
 		UserName: userName,
-		Title:    userQuestion, // 可以根据需求设置标题，这边暂时用用户第一次的问题作为标题
+		Title:    summarizeSessionTitle(userQuestion), // 可以根据需求设置标题，这边暂时用用户第一次的问题作为标题
 	}
-	createdSession, err := session.CreateSession(newSession)
+	createdSession, err := sessiondao.CreateSession(newSession)
 	if err != nil {
 		log.Println("CreateSessionAndSendMessage CreateSession error:", err)
 		return "", "", code.CodeServerBusy
@@ -71,9 +72,9 @@ func CreateStreamSessionOnly(userName string, userQuestion string) (string, code
 	newSession := &model.Session{
 		ID:       uuid.New().String(),
 		UserName: userName,
-		Title:    userQuestion,
+		Title:    summarizeSessionTitle(userQuestion),
 	}
-	createdSession, err := session.CreateSession(newSession)
+	createdSession, err := sessiondao.CreateSession(newSession)
 	if err != nil {
 		log.Println("CreateStreamSessionOnly CreateSession error:", err)
 		return "", code.CodeServerBusy
@@ -168,29 +169,71 @@ func ChatSend(userName string, sessionID string, userQuestion string, modelType 
 }
 
 func GetChatHistory(userName string, sessionID string) ([]model.History, code.Code) {
-	// 获取AIHelper中的消息历史
 	manager := aihelper.GetGlobalManager()
-	helper, exists := manager.GetAIHelper(userName, sessionID)
-	if !exists {
+	if helper, exists := manager.GetAIHelper(userName, sessionID); exists {
+		messages := helper.GetMessages()
+		history := make([]model.History, 0, len(messages))
+		for _, msg := range messages {
+			history = append(history, model.History{IsUser: msg.IsUser, Content: msg.Content})
+		}
+		return history, code.CodeSuccess
+	}
+
+	msgs, err := messagedao.GetMessagesBySessionID(sessionID)
+	if err != nil {
+		log.Println("GetChatHistory GetMessagesBySessionID error:", err)
 		return nil, code.CodeServerBusy
 	}
-
-	messages := helper.GetMessages()
-	history := make([]model.History, 0, len(messages))
-
-	// 转换消息为历史格式（根据消息顺序或内容判断用户/AI消息）
-	for i, msg := range messages {
-		isUser := i%2 == 0
-		history = append(history, model.History{
-			IsUser:  isUser,
-			Content: msg.Content,
-		})
+	history := make([]model.History, 0, len(msgs))
+	for _, msg := range msgs {
+		if msg.UserName != userName {
+			continue
+		}
+		history = append(history, model.History{IsUser: msg.IsUser, Content: msg.Content})
 	}
-
 	return history, code.CodeSuccess
 }
-
 func ChatStreamSend(userName string, sessionID string, userQuestion string, modelType string, writer http.ResponseWriter) code.Code {
 
 	return StreamMessageToExistingSession(userName, sessionID, userQuestion, modelType, writer)
+}
+
+func RenameSession(userName, sessionID, title string) (*model.SessionInfo, code.Code) {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return nil, code.CodeInvalidParams
+	}
+	if utf8.RuneCountInString(title) > 60 {
+		title = truncateRunes(title, 60)
+	}
+	if err := sessiondao.UpdateSessionTitle(userName, sessionID, title); err != nil {
+		log.Println("RenameSession UpdateSessionTitle error:", err)
+		return nil, code.CodeServerBusy
+	}
+	return &model.SessionInfo{SessionID: sessionID, Title: title}, code.CodeSuccess
+}
+
+func DeleteSession(userName, sessionID string) code.Code {
+	if err := sessiondao.DeleteSession(userName, sessionID); err != nil {
+		log.Println("DeleteSession error:", err)
+		return code.CodeServerBusy
+	}
+	aihelper.GetGlobalManager().RemoveAIHelper(userName, sessionID)
+	return code.CodeSuccess
+}
+
+func summarizeSessionTitle(question string) string {
+	text := strings.Join(strings.Fields(question), " ")
+	text = strings.Trim(text, " \t\r\n#*_`>~-,.!?;:()[]{}\"'")
+	if text == "" {
+		return "New Chat"
+	}
+	return truncateRunes(text, 24)
+}
+func truncateRunes(text string, limit int) string {
+	runes := []rune(text)
+	if len(runes) <= limit {
+		return text
+	}
+	return string(runes[:limit]) + "..."
 }

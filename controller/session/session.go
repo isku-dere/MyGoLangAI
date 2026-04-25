@@ -45,6 +45,20 @@ type (
 		History []model.History `json:"history"`
 		controller.Response
 	}
+	RenameSessionRequest struct {
+		SessionID string `json:"sessionId" binding:"required"`
+		Title     string `json:"title" binding:"required"`
+	}
+	RenameSessionResponse struct {
+		Session *model.SessionInfo `json:"session,omitempty"`
+		controller.Response
+	}
+	DeleteSessionRequest struct {
+		SessionID string `json:"sessionId" binding:"required"`
+	}
+	DeleteSessionResponse struct {
+		controller.Response
+	}
 )
 
 func GetUserSessionsByUserName(c *gin.Context) {
@@ -154,7 +168,6 @@ func ChatStreamSend(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("X-Accel-Buffering", "no") // 禁止代理缓存
 
-
 	code_ := session.ChatStreamSend(userName, req.SessionID, req.UserQuestion, req.ModelType, http.ResponseWriter(c.Writer))
 	if code_ != code.CodeSuccess {
 		c.SSEvent("error", gin.H{"message": "Failed to send message"})
@@ -179,5 +192,44 @@ func ChatHistory(c *gin.Context) {
 
 	res.Success()
 	res.History = history
+	c.JSON(http.StatusOK, res)
+}
+
+func RenameSession(c *gin.Context) {
+	req := new(RenameSessionRequest)
+	res := new(RenameSessionResponse)
+	userName := c.GetString("userName")
+	if err := c.ShouldBindJSON(req); err != nil {
+		c.JSON(http.StatusOK, res.CodeOf(code.CodeInvalidParams))
+		return
+	}
+
+	info, code_ := session.RenameSession(userName, req.SessionID, req.Title)
+	if code_ != code.CodeSuccess {
+		c.JSON(http.StatusOK, res.CodeOf(code_))
+		return
+	}
+
+	res.Success()
+	res.Session = info
+	c.JSON(http.StatusOK, res)
+}
+
+func DeleteSession(c *gin.Context) {
+	req := new(DeleteSessionRequest)
+	res := new(DeleteSessionResponse)
+	userName := c.GetString("userName")
+	if err := c.ShouldBindJSON(req); err != nil {
+		c.JSON(http.StatusOK, res.CodeOf(code.CodeInvalidParams))
+		return
+	}
+
+	code_ := session.DeleteSession(userName, req.SessionID)
+	if code_ != code.CodeSuccess {
+		c.JSON(http.StatusOK, res.CodeOf(code_))
+		return
+	}
+
+	res.Success()
 	c.JSON(http.StatusOK, res)
 }
