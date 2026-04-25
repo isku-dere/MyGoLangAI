@@ -1,0 +1,10 @@
+.git
+.gitignore
+node_modules
+vue-frontend/node_modules
+vue-frontend/dist
+*.log
+.env
+deploy/certs
+deploy/acme
+

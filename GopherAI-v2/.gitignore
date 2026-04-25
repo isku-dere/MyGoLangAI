@@ -1,0 +1,5 @@
+.env
+deploy/.env
+deploy/acme
+*.log
+
