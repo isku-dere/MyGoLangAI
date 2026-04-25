@@ -44,3 +44,8 @@ charset =  "utf8mb4"
   [voiceServiceConfig]
   voiceServiceApiKey = "baiduApiKey"
   voiceServiceSecretKey ="baiduSecretKey"
+
+[ocrConfig]
+apiUrl = "https://ffrfp796j3z7u525.aistudio-app.com/layout-parsing"
+token = ""
+timeoutSecond = 120

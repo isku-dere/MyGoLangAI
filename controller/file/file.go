@@ -12,7 +12,8 @@ import (
 
 type (
 	UploadFileResponse struct {
-		FilePath string `json:"file_path,omitempty"`
+		DocumentID string `json:"document_id,omitempty"`
+		FilePath   string `json:"file_path,omitempty"`
 		controller.Response
 	}
 )
@@ -33,8 +34,7 @@ func UploadRagFile(c *gin.Context) {
 		return
 	}
 
-	//indexer 会在 service 层根据实际文件名创建
-	filePath, err := file.UploadRagFile(username, uploadedFile)
+	document, err := file.UploadRagFile(username, uploadedFile)
 	if err != nil {
 		log.Println("UploadFile fail ", err)
 		c.JSON(http.StatusOK, res.CodeOf(code.CodeServerBusy))
@@ -42,6 +42,7 @@ func UploadRagFile(c *gin.Context) {
 	}
 
 	res.Success()
-	res.FilePath = filePath
+	res.DocumentID = document.ID
+	res.FilePath = document.FilePath
 	c.JSON(http.StatusOK, res)
 }

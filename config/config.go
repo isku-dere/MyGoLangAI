@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/BurntSushi/toml"
 )
@@ -62,6 +63,12 @@ type VoiceServiceConfig struct {
 	VoiceServiceSecretKey string `toml:"voiceServiceSecretKey"`
 }
 
+type OCRConfig struct {
+	APIURL        string `toml:"apiUrl"`
+	Token         string `toml:"token"`
+	TimeoutSecond int    `toml:"timeoutSecond"`
+}
+
 type Config struct {
 	EmailConfig        `toml:"emailConfig"`
 	RedisConfig        `toml:"redisConfig"`
@@ -71,6 +78,7 @@ type Config struct {
 	Rabbitmq           `toml:"rabbitmqConfig"`
 	RagModelConfig     `toml:"ragModelConfig"`
 	VoiceServiceConfig `toml:"voiceServiceConfig"`
+	OCRConfig          `toml:"ocrConfig"`
 }
 
 type RedisKeyConfig struct {
@@ -116,6 +124,17 @@ func applyEnvOverrides(c *Config) {
 	}
 	if value := os.Getenv("EMAIL_ADDRESS"); value != "" {
 		c.Email = value
+	}
+	if value := os.Getenv("OCR_API_URL"); value != "" {
+		c.APIURL = value
+	}
+	if value := os.Getenv("OCR_API_TOKEN"); value != "" {
+		c.Token = value
+	}
+	if value := os.Getenv("OCR_TIMEOUT_SECONDS"); value != "" {
+		if timeout, err := strconv.Atoi(value); err == nil {
+			c.TimeoutSecond = timeout
+		}
 	}
 }
 

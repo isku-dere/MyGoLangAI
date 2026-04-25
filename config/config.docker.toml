@@ -45,3 +45,7 @@ dimension = 1024
 voiceServiceApiKey = "baiduApiKey"
 voiceServiceSecretKey = "baiduSecretKey"
 
+[ocrConfig]
+apiUrl = "https://ffrfp796j3z7u525.aistudio-app.com/layout-parsing"
+token = ""
+timeoutSecond = 120
