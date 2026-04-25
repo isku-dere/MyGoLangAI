@@ -11,4 +11,5 @@ func FileRouter(r *gin.RouterGroup) {
 	r.GET("/documents", file.ListRagDocuments)
 	r.GET("/documents/:id", file.GetRagDocument)
 	r.DELETE("/documents/:id", file.DeleteRagDocument)
+	OCRRouter(r.Group("/ocr"))
 }

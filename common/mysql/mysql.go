@@ -65,6 +65,7 @@ func migration() error {
 		new(model.Session),
 		new(model.Message),
 		new(model.RAGDocument),
+		new(model.OCRTask),
 	)
 }
 
