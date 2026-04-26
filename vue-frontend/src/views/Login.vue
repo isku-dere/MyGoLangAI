@@ -233,4 +233,49 @@ export default {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@media (max-width: 520px) {
+  .login-container {
+    align-items: flex-start;
+    min-height: 100dvh;
+    padding: 40px 16px 24px;
+    overflow-y: auto;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 16px;
+  }
+
+  .card-header {
+    padding: 18px 0 12px;
+  }
+
+  .card-header h2 {
+    font-size: 24px;
+  }
+
+  :deep(.el-card__body) {
+    padding: 18px;
+  }
+
+  :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 18px;
+  }
+
+  :deep(.el-form-item__label) {
+    display: block;
+    width: 100% !important;
+    height: auto;
+    margin-bottom: 6px;
+    text-align: left;
+    line-height: 1.4;
+  }
+
+  :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+}
 </style>

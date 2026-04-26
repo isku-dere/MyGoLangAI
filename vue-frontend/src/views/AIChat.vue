@@ -35,10 +35,44 @@
       </ul>
     </div>
 
+    <el-drawer v-model="sessionDrawerVisible" title="会话列表" direction="ltr" size="86%" class="mobile-session-drawer">
+      <div class="drawer-session-panel">
+        <button class="new-chat-btn" @click="createNewSession">＋ 新聊天</button>
+        <ul class="session-list-ul drawer-session-list">
+          <li
+            v-for="session in sessions"
+            :key="session.id"
+            :class="['session-item', { active: currentSessionId === session.id }]"
+            @click="switchSession(session.id)"
+          >
+            <div v-if="editingSessionId === session.id" class="session-edit" @click.stop>
+              <input
+                v-model="editingTitle"
+                class="session-title-input"
+                maxlength="60"
+                @keydown.enter.prevent.stop="saveSessionTitle(session)"
+                @keydown.esc.prevent.stop="cancelRename"
+              />
+              <button class="session-action" @click.stop="saveSessionTitle(session)">Save</button>
+              <button class="session-action muted" @click.stop="cancelRename">Cancel</button>
+            </div>
+            <div v-else class="session-row">
+              <span class="session-title" :title="session.name || `Chat ${session.id}`">{{ session.name || `Chat ${session.id}` }}</span>
+              <span class="session-actions">
+                <button class="session-action" @click.stop="startRename(session)">Rename</button>
+                <button class="session-action danger" @click.stop="deleteSession(session)">Delete</button>
+              </span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </el-drawer>
+
     <!-- 右侧聊天区域 -->
     <div class="chat-section">
       <div class="top-bar">
         <button class="back-btn" @click="$router.push('/menu')">← 返回</button>
+        <button class="mobile-session-btn" @click="sessionDrawerVisible = true">会话</button>
         <button class="sync-btn" @click="syncHistory" :disabled="!currentSessionId || tempSession">同步历史数据</button>
         <label for="modelType">选择模型：</label>
         <select id="modelType" v-model="selectedModel" class="model-select">
@@ -46,7 +80,7 @@
           <option value="2">阿里百炼 RAG</option>
           <option value="3">阿里百炼 MCP</option>
         </select>
-        <label for="streamingMode" style="margin-left: 20px;">
+        <label for="streamingMode" class="streaming-label">
           <input type="checkbox" id="streamingMode" v-model="isStreaming" />
           流式响应
         </label>
@@ -122,6 +156,7 @@ export default {
     const fileInput = ref(null)
     const editingSessionId = ref(null)
     const editingTitle = ref('')
+    const sessionDrawerVisible = ref(false)
 
 
     const escapeHtml = (value) => String(value)
@@ -331,6 +366,7 @@ export default {
       currentSessionId.value = 'temp'
       tempSession.value = true
       currentMessages.value = []
+      sessionDrawerVisible.value = false
       // focus input
       nextTick(() => {
         if (messageInput.value) messageInput.value.focus()
@@ -360,6 +396,7 @@ export default {
 
 
       currentMessages.value = [...(sessions.value[sessionId].messages || [])]
+      sessionDrawerVisible.value = false
       await nextTick()
       scrollToBottom()
     }
@@ -415,6 +452,7 @@ export default {
               tempSession.value = false
             }
           }
+          sessionDrawerVisible.value = false
           ElMessage.success('Session deleted')
         } else {
           ElMessage.error(response.data?.status_msg || 'Failed to delete session')
@@ -780,6 +818,7 @@ export default {
       fileInput,
       editingSessionId,
       editingTitle,
+      sessionDrawerVisible,
       renderMarkdown,
       playTTS,
       startRename,
@@ -893,6 +932,18 @@ export default {
   margin: 0;
   flex: 1;
   overflow-y: auto;
+}
+
+.drawer-session-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.drawer-session-list {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: calc(100vh - 150px);
 }
 
 .session-item {
@@ -1009,6 +1060,17 @@ export default {
   gap: 12px;
 }
 
+.mobile-session-btn {
+  display: none;
+  background: rgba(102, 126, 234, 0.12);
+  border: 1px solid rgba(102, 126, 234, 0.18);
+  color: #4f63c6;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .back-btn {
   background: rgba(255, 255, 255, 0.22);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -1069,6 +1131,10 @@ export default {
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(245, 87, 108, 0.2);
   transition: all 0.2s ease;
+}
+
+.streaming-label {
+  margin-left: 20px;
 }
 
 .upload-btn:hover:not(:disabled) {
@@ -1334,5 +1400,104 @@ export default {
   background: #ccc;
   box-shadow: none;
   cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .session-list {
+    display: none;
+  }
+
+  .mobile-session-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-chat-container {
+    height: 100dvh;
+  }
+
+  .top-bar {
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .top-bar label {
+    font-size: 13px;
+  }
+
+  .streaming-label {
+    margin-left: 0;
+  }
+
+  .model-select {
+    margin-left: 0;
+    max-width: 150px;
+  }
+
+  .back-btn,
+  .mobile-session-btn,
+  .sync-btn,
+  .upload-btn {
+    padding: 8px 10px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .chat-messages {
+    padding: 16px 12px;
+    gap: 12px;
+  }
+
+  .message {
+    max-width: 92%;
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .message-content :deep(pre) {
+    max-width: 100%;
+  }
+
+  .chat-input {
+    padding: 12px;
+  }
+
+  .chat-input textarea {
+    padding: 12px 74px 12px 12px;
+    min-height: 48px;
+    max-height: 120px;
+  }
+
+  .send-btn {
+    right: 20px;
+    bottom: 20px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    align-content: flex-start;
+  }
+
+  .model-select {
+    flex: 1 1 120px;
+  }
+
+  .upload-btn {
+    flex: 1 1 100%;
+  }
+
+  .session-edit {
+    grid-template-columns: 1fr;
+  }
+
+  .session-actions {
+    opacity: 1;
+  }
 }
 </style>

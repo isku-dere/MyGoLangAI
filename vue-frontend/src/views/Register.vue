@@ -324,4 +324,59 @@ export default {
   margin-top: 20px;
   animation: fadeIn 1s ease-out 0.5s both;
 }
+
+@media (max-width: 520px) {
+  .register-container {
+    align-items: flex-start;
+    min-height: 100dvh;
+    padding: 28px 16px 24px;
+    overflow-y: auto;
+  }
+
+  .register-card {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 16px;
+  }
+
+  .card-header {
+    padding: 14px 0 8px;
+  }
+
+  .card-header h2 {
+    font-size: 24px;
+  }
+
+  :deep(.el-card__body) {
+    padding: 18px;
+  }
+
+  :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  :deep(.el-form-item__label) {
+    display: block;
+    width: 100% !important;
+    height: auto;
+    margin-bottom: 6px;
+    text-align: left;
+    line-height: 1.4;
+  }
+
+  :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+
+  :deep(.el-row) {
+    display: grid;
+    gap: 10px;
+  }
+
+  :deep(.el-col) {
+    max-width: 100%;
+    flex: 0 0 100%;
+  }
+}
 </style>

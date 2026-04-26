@@ -459,4 +459,63 @@ export default {
   cursor: not-allowed;
   transform: none;
 }
+
+@media (max-width: 900px) {
+  .image-recognition-container {
+    height: 100dvh;
+  }
+
+  .session-list {
+    display: none;
+  }
+
+  .top-bar {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .top-bar h2 {
+    font-size: 18px;
+  }
+
+  .back-btn {
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  .chat-messages {
+    padding: 16px 12px;
+    gap: 12px;
+  }
+
+  .message {
+    max-width: 92%;
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .message-content img {
+    max-width: min(250px, 100%);
+  }
+
+  .chat-input {
+    padding: 12px;
+  }
+
+  .chat-input form {
+    display: grid;
+    gap: 10px;
+  }
+
+  .chat-input input[type="file"] {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .chat-input button {
+    width: 100%;
+    padding: 12px 16px;
+  }
+}
 </style>

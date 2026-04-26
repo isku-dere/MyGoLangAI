@@ -97,4 +97,54 @@ export default {
 .menu-item:hover .el-icon { transform: scale(1.2) rotate(5deg); }
 .card-content h3 { margin: 0 0 15px 0; color: #2c3e50; font-size: 24px; font-weight: 600; }
 .card-content p { margin: 0; color: #7f8c8d; font-size: 16px; line-height: 1.6; }
+
+@media (max-width: 768px) {
+  .menu-container {
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .header {
+    min-height: auto;
+    padding: 14px 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .header h1 {
+    font-size: 22px;
+  }
+
+  .main {
+    align-items: flex-start;
+    padding: 18px 0 28px;
+  }
+
+  .menu-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+    max-width: 440px;
+  }
+
+  .menu-item {
+    border-radius: 16px;
+  }
+
+  .menu-item:hover {
+    transform: none;
+  }
+
+  .card-content {
+    padding: 26px 18px;
+  }
+
+  .card-content h3 {
+    font-size: 20px;
+  }
+
+  .card-content p {
+    font-size: 14px;
+  }
+}
 </style>
