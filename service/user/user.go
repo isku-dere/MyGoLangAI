@@ -8,6 +8,7 @@ import (
 	"GopherAI/model"
 	"GopherAI/utils"
 	"GopherAI/utils/myjwt"
+	"strings"
 )
 
 func Login(username, password string) (string, code.Code) {
@@ -33,11 +34,11 @@ func Login(username, password string) (string, code.Code) {
 
 func Register(email, password, captcha string) (string, string, code.Code) {
 
-	var ok bool
+	var err error
 	var userInformation *model.User
 
-	//1:先判断用户是否已经存在了
-	if ok, _ := user.IsExistUser(email); ok {
+	//1:先判断邮箱是否已经注册过
+	if ok, _ := user.IsExistEmail(email); ok {
 		return "", "", code.CodeUserExist
 	}
 
@@ -50,7 +51,10 @@ func Register(email, password, captcha string) (string, string, code.Code) {
 	username := utils.GetRandomNumbers(11)
 
 	//4：注册到数据库中
-	if userInformation, ok = user.Register(username, email, password); !ok {
+	if userInformation, err = user.Register(username, email, password); err != nil {
+		if isDuplicateUserError(err) {
+			return "", "", code.CodeUserExist
+		}
 		return "", "", code.CodeServerBusy
 	}
 
@@ -67,6 +71,14 @@ func Register(email, password, captcha string) (string, string, code.Code) {
 	}
 
 	return token, username, code.CodeSuccess
+}
+
+func isDuplicateUserError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "duplicate") || strings.Contains(message, "1062")
 }
 
 // 往指定邮箱发送验证码

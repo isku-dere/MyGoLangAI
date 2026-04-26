@@ -4,6 +4,7 @@ import (
 	"GopherAI/config"
 	"GopherAI/model"
 	"fmt"
+	stdlog "log"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -60,13 +61,52 @@ func InitMysql() error {
 }
 
 func migration() error {
-	return DB.AutoMigrate(
+	if err := DB.AutoMigrate(
 		new(model.User),
 		new(model.Session),
 		new(model.Message),
 		new(model.RAGDocument),
 		new(model.OCRTask),
-	)
+	); err != nil {
+		return err
+	}
+	return ensureUserEmailUniqueIndex()
+}
+
+func ensureUserEmailUniqueIndex() error {
+	var duplicateEmail string
+	err := DB.Raw(`
+		SELECT email
+		FROM users
+		WHERE email <> '' AND deleted_at IS NULL
+		GROUP BY email
+		HAVING COUNT(*) > 1
+		LIMIT 1
+	`).Scan(&duplicateEmail).Error
+	if err != nil {
+		return err
+	}
+	if duplicateEmail != "" {
+		stdlog.Printf("skip unique users.email index: duplicated email exists")
+		return nil
+	}
+
+	type indexInfo struct {
+		NonUnique int `gorm:"column:Non_unique"`
+	}
+	var indexes []indexInfo
+	if err := DB.Raw("SHOW INDEX FROM users WHERE Key_name = 'idx_users_email'").Scan(&indexes).Error; err != nil {
+		return err
+	}
+	if len(indexes) > 0 && indexes[0].NonUnique == 0 {
+		return nil
+	}
+	if len(indexes) > 0 {
+		if err := DB.Exec("DROP INDEX idx_users_email ON users").Error; err != nil {
+			return err
+		}
+	}
+	return DB.Exec("CREATE UNIQUE INDEX idx_users_email ON users(email)").Error
 }
 
 func InsertUser(user *model.User) (*model.User, error) {
@@ -77,5 +117,11 @@ func InsertUser(user *model.User) (*model.User, error) {
 func GetUserByUsername(username string) (*model.User, error) {
 	user := new(model.User)
 	err := DB.Where("username = ?", username).First(user).Error
+	return user, err
+}
+
+func GetUserByEmail(email string) (*model.User, error) {
+	user := new(model.User)
+	err := DB.Where("email = ?", email).First(user).Error
 	return user, err
 }
