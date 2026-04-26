@@ -1,24 +1,85 @@
 <template>
-  <div class="readme-page">
-    <header class="readme-header">
-      <div>
-        <p class="page-label">PROJECT README</p>
-        <h1>GopherAI 项目说明</h1>
+  <div class="home-shell">
+    <header class="top-nav">
+      <div class="brand">
+        <span class="brand-mark">G</span>
+        <div>
+          <strong>{{ text.brand }}</strong>
+          <span>{{ text.subtitle }}</span>
+        </div>
       </div>
-      <div class="header-actions">
-        <el-button type="primary" @click="$router.push('/ai-chat')">AI 对话</el-button>
-        <el-button @click="$router.push('/ocr-notes')">OCR 笔记</el-button>
-        <el-button type="danger" plain @click="handleLogout">退出登录</el-button>
-      </div>
+      <nav class="nav-actions">
+        <el-button plain @click="$router.push('/ai-chat')">{{ text.chatTitle }}</el-button>
+        <el-button plain @click="$router.push('/ocr-notes')">{{ text.ocrTitle }}</el-button>
+        <el-button type="danger" plain @click="handleLogout">{{ text.logout }}</el-button>
+      </nav>
     </header>
 
-    <main class="readme-main">
-      <section class="readme-box" aria-label="项目 Markdown 说明">
-        <div class="readme-toolbar">
-          <span>README.md</span>
-          <span>生产环境：Nginx HTTPS + Docker Compose</span>
+    <main class="home-main">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">{{ text.eyebrow }}</p>
+          <h1>{{ text.heroTitle }}</h1>
+          <p class="hero-desc">{{ text.heroDesc }}</p>
+          <div class="hero-actions">
+            <el-button type="primary" size="large" @click="$router.push('/ai-chat')">{{ text.startChat }}</el-button>
+            <el-button size="large" @click="$router.push('/ocr-notes')">{{ text.openOcr }}</el-button>
+          </div>
         </div>
-        <pre class="markdown-view">{{ projectReadme }}</pre>
+        <div class="status-panel">
+          <div v-for="metric in metrics" :key="metric.label" class="metric">
+            <span>{{ metric.label }}</span>
+            <strong>{{ metric.value }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p>{{ text.featureEyebrow }}</p>
+          <h2>{{ text.featureTitle }}</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card" @click="$router.push('/ai-chat')">
+            <el-icon><ChatDotRound /></el-icon>
+            <h3>{{ text.chatTitle }}</h3>
+            <p>{{ text.chatDesc }}</p>
+          </article>
+          <article class="feature-card" @click="$router.push('/ai-chat')">
+            <el-icon><Search /></el-icon>
+            <h3>{{ text.ragTitle }}</h3>
+            <p>{{ text.ragDesc }}</p>
+          </article>
+          <article class="feature-card" @click="$router.push('/ocr-notes')">
+            <el-icon><Document /></el-icon>
+            <h3>{{ text.ocrTitle }}</h3>
+            <p>{{ text.ocrDesc }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section split-section">
+        <div>
+          <div class="section-heading compact">
+            <p>{{ text.archEyebrow }}</p>
+            <h2>{{ text.archTitle }}</h2>
+          </div>
+          <div class="flow-list">
+            <div v-for="step in flow" :key="step.title" class="flow-step">
+              <span>{{ step.index }}</span>
+              <div>
+                <h3>{{ step.title }}</h3>
+                <p>{{ step.desc }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="stack-panel">
+          <h2>{{ text.stackTitle }}</h2>
+          <div class="stack-list">
+            <span v-for="item in stack" :key="item">{{ item }}</span>
+          </div>
+        </aside>
       </section>
     </main>
   </div>
@@ -27,80 +88,28 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-
-const projectReadme = `# GopherAI
-
-一个基于 Go + Gin 的 AI 知识库与 OCR 手写笔记整理系统。
-
-项目定位：
-- 面向个人知识管理和简历展示的完整 AI 应用。
-- 支持普通 AI 对话、RAG 私有知识库问答、OCR 手写笔记整理。
-- 线上通过 Docker Compose 部署，Nginx 提供 HTTPS 反向代理。
-
-## 核心功能
-
-### 1. AI 对话
-- 支持多会话管理。
-- 支持普通问答和流式响应。
-- 支持 Markdown 消息渲染，包括标题、列表、引用、代码块、加粗和行内代码。
-
-### 2. RAG 知识库
-- 用户可上传 Markdown / TXT 文档。
-- 文档完整内容保存到 MySQL。
-- 文档向量写入 Redis Vector。
-- 检索时按 username 做用户隔离，只召回当前用户自己的知识库内容。
-- 删除知识库文档时同步清理 Redis 向量数据，避免 MySQL 与 Redis 残留不一致。
-
-### 3. OCR 手写笔记整理
-- 支持上传图片或 PDF 创建 OCR 任务。
-- 上传后立即创建任务并进入 RabbitMQ 队列。
-- app 内置 OCR worker 并发消费任务，避免外部 PaddleOCR 接口阻塞上传请求。
-- 前端通过任务状态展示 pending / running / succeeded / failed。
-- OCR 原文不会直接进入知识库，只有用户手动保存总结后的 Markdown 笔记才会写入 RAG。
-
-### 4. 注册登录
-- 支持邮箱验证码注册。
-- 注册成功后返回随机账号 username。
-- 邮箱唯一性校验，避免重复邮箱注册。
-
-## 技术栈
-
-- 后端：Go、Gin
-- 数据库：MySQL
-- 向量存储：Redis Vector
-- 消息队列：RabbitMQ
-- OCR：PaddleOCR 外部 API
-- 部署：Docker Compose
-- 反向代理：Nginx HTTPS
-
-## 生产服务
-
-- app：后端 API 服务与 OCR worker
-- nginx：前端静态资源与 HTTPS 反向代理
-- mysql：业务数据、用户、会话、文档、OCR 任务
-- redis：RAG 向量索引
-- rabbitmq：OCR 异步任务队列
-
-## 数据流
-
-### 普通对话
-用户 -> Nginx -> Go API -> 大模型接口 -> 返回回答
-
-### RAG 问答
-用户问题 -> Go API -> Redis Vector 检索 -> 拼接上下文 -> 大模型接口 -> 返回回答
-
-### OCR 笔记
-上传文件 -> 创建 MySQL 任务 -> 投递 RabbitMQ -> worker 调用 PaddleOCR -> 写入 OCR 结果 -> 用户总结并保存 Markdown -> 写入知识库
-
-## 部署与稳定性
-
-- 公网 API 统一使用 /api 路径。
-- Nginx 将 /api 转发到后端 /api/v1。
-- MySQL、Redis、RabbitMQ 使用 Docker volume 持久化。
-- OCR 任务使用队列异步化，失败即终态，由用户重新上传重试。
-- app 重启后会恢复未完成 OCR 任务，避免任务长期卡在处理中。`
+import { ChatDotRound, Document, Search } from '@element-plus/icons-vue'
 
 const text = {
+  brand: 'GopherAI',
+  subtitle: 'AI 知识库与 OCR 笔记系统',
+  logout: '退出登录',
+  eyebrow: '个人项目工程展示',
+  heroTitle: '面向知识问答与手写笔记整理的 AI 应用',
+  heroDesc: '系统覆盖账号注册登录、流式 AI 对话、RAG 私有知识库、OCR 异步任务、Markdown 笔记总结与保存，并通过容器化方式部署到 HTTPS 站点。',
+  startChat: '进入 AI 对话',
+  openOcr: '整理 OCR 笔记',
+  featureEyebrow: '核心能力',
+  featureTitle: '从文档沉淀到智能问答',
+  chatTitle: 'AI 对话',
+  chatDesc: '支持普通问答和流式响应，聊天历史按会话管理。',
+  ragTitle: 'RAG 知识库',
+  ragDesc: '文档正文保存在 MySQL，向量写入 Redis Vector，并按用户隔离检索。',
+  ocrTitle: 'OCR 手写笔记整理',
+  ocrDesc: '上传图片或 PDF 后进入 RabbitMQ 队列，识别结果可总结为 Markdown 并手动入库。',
+  archEyebrow: '架构流程',
+  archTitle: '生产环境链路',
+  stackTitle: '技术栈',
   confirmLogout: '确定要退出登录吗？',
   warning: '提示',
   confirm: '确定',
@@ -108,8 +117,24 @@ const text = {
   logoutSuccess: '已退出登录'
 }
 
+const metrics = [
+  { label: '公网入口', value: 'Nginx HTTPS' },
+  { label: '任务队列', value: 'RabbitMQ' },
+  { label: '向量检索', value: 'Redis Vector' }
+]
+
+const flow = [
+  { index: '01', title: '用户请求进入网关', desc: '公网路径统一使用 /api，由 Nginx 转发到后端服务。' },
+  { index: '02', title: '业务服务处理', desc: 'Go + Gin 负责认证、聊天、文档、OCR 任务与知识库接口。' },
+  { index: '03', title: '数据分层保存', desc: 'MySQL 保存用户、会话、文档正文与 OCR 任务，Redis 保存 RAG 向量索引。' },
+  { index: '04', title: '异步 OCR 消费', desc: '上传后任务进入 RabbitMQ，worker 消费并调用外部 PaddleOCR API。' }
+]
+
+const stack = ['Go', 'Gin', 'MySQL', 'Redis Vector', 'RabbitMQ', 'Docker Compose', 'Nginx HTTPS', 'PaddleOCR API']
+
 export default {
   name: 'MenuView',
+  components: { ChatDotRound, Document, Search },
   setup() {
     const router = useRouter()
     const handleLogout = async () => {
@@ -126,32 +151,76 @@ export default {
         // User cancelled logout.
       }
     }
-    return { projectReadme, handleLogout }
+    return { text, metrics, flow, stack, handleLogout }
   }
 }
 </script>
 
 <style scoped>
-.readme-page { min-height: 100vh; background: #f4f6f8; color: #1f2937; }
-.readme-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 24px clamp(16px, 4vw, 48px); background: #fff; border-bottom: 1px solid #e5e7eb; }
-.page-label { margin: 0 0 6px; color: #667085; font-size: 12px; font-weight: 700; letter-spacing: 0; }
-.readme-header h1 { margin: 0; font-size: 28px; line-height: 1.25; color: #111827; }
-.header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
-.header-actions .el-button { margin-left: 0; }
-.readme-main { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 48px; }
-.readme-box { overflow: hidden; border: 1px solid #d8dee4; border-radius: 8px; background: #fff; box-shadow: 0 14px 34px rgba(17, 24, 39, 0.08); }
-.readme-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: #f6f8fa; border-bottom: 1px solid #d8dee4; color: #57606a; font-size: 13px; }
-.readme-toolbar span:first-child { color: #24292f; font-weight: 700; }
-.markdown-view { min-height: 620px; max-height: calc(100vh - 210px); margin: 0; padding: 28px 32px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; color: #24292f; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 15px; line-height: 1.78; background: #fff; }
+.home-shell { min-height: 100vh; color: #182230; background: #f6f8fb; }
+.top-nav { position: sticky; top: 0; z-index: 10; min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px clamp(18px, 4vw, 56px); background: rgba(255, 255, 255, 0.92); border-bottom: 1px solid #e6eaf0; backdrop-filter: blur(14px); }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark { width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: #172033; color: #fff; font-weight: 800; font-size: 22px; }
+.brand strong, .brand span { display: block; }
+.brand strong { font-size: 19px; line-height: 1.2; }
+.brand span { color: #667085; font-size: 13px; margin-top: 3px; }
+.nav-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.home-main { width: min(1180px, calc(100% - 36px)); margin: 0 auto; padding: 34px 0 56px; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .55fr); gap: 26px; align-items: stretch; padding: clamp(28px, 5vw, 58px); border-radius: 8px; background: linear-gradient(135deg, #ffffff 0%, #edf4f2 52%, #f7efe4 100%); border: 1px solid #e2e8f0; box-shadow: 0 18px 48px rgba(20, 32, 50, 0.08); }
+.eyebrow, .section-heading p { margin: 0 0 10px; color: #0f766e; font-size: 13px; font-weight: 700; letter-spacing: 0; }
+.hero h1 { max-width: 780px; margin: 0; color: #111827; font-size: clamp(34px, 5vw, 60px); line-height: 1.06; letter-spacing: 0; }
+.hero-desc { max-width: 760px; margin: 20px 0 0; color: #475467; font-size: 18px; line-height: 1.8; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.status-panel { display: grid; gap: 12px; align-content: end; }
+.metric { padding: 18px; border-radius: 8px; background: rgba(255, 255, 255, 0.76); border: 1px solid #dde5ee; }
+.metric span { display: block; color: #667085; font-size: 13px; margin-bottom: 8px; }
+.metric strong { color: #172033; font-size: 20px; }
+.section { margin-top: 34px; }
+.section-heading { margin-bottom: 18px; }
+.section-heading.compact { margin-bottom: 16px; }
+.section-heading h2, .stack-panel h2 { margin: 0; color: #111827; font-size: 28px; line-height: 1.25; }
+.feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.feature-card { min-height: 232px; padding: 26px; border-radius: 8px; background: #fff; border: 1px solid #e4e9f0; box-shadow: 0 12px 28px rgba(20, 32, 50, 0.06); cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.feature-card:hover { transform: translateY(-4px); border-color: #8bb8ad; box-shadow: 0 18px 34px rgba(20, 32, 50, 0.1); }
+.feature-card .el-icon { width: 44px; height: 44px; margin-bottom: 24px; border-radius: 8px; background: #edf4f2; color: #0f766e; font-size: 24px; }
+.feature-card h3, .flow-step h3 { margin: 0 0 10px; color: #172033; font-size: 20px; }
+.feature-card p, .flow-step p { margin: 0; color: #5d6b7a; line-height: 1.7; }
+.split-section { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr); gap: 24px; align-items: start; }
+.flow-list { display: grid; gap: 12px; }
+.flow-step { display: grid; grid-template-columns: 54px 1fr; gap: 14px; padding: 18px; border-radius: 8px; background: #fff; border: 1px solid #e4e9f0; }
+.flow-step > span { width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: #172033; color: #fff; font-weight: 700; }
+.stack-panel { padding: 24px; border-radius: 8px; background: #172033; color: #fff; }
+.stack-panel h2 { color: #fff; }
+.stack-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.stack-list span { padding: 9px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16); color: #edf2f7; font-size: 14px; }
 
-@media (max-width: 720px) {
-  .readme-header { align-items: flex-start; flex-direction: column; padding: 18px 14px; }
-  .readme-header h1 { font-size: 24px; }
-  .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-  .header-actions .el-button { min-height: 38px; }
-  .header-actions .el-button:last-child { grid-column: 1 / -1; }
-  .readme-main { width: calc(100% - 20px); padding: 14px 0 28px; }
-  .readme-toolbar { align-items: flex-start; flex-direction: column; padding: 10px 12px; }
-  .markdown-view { min-height: 560px; max-height: none; padding: 18px 14px; font-size: 13px; line-height: 1.68; }
+@media (max-width: 900px) {
+  .top-nav { position: static; align-items: flex-start; }
+  .nav-actions { width: 100%; justify-content: flex-start; }
+  .home-main { width: min(100% - 28px, 680px); padding-top: 20px; }
+  .hero, .split-section { grid-template-columns: 1fr; }
+  .hero { padding: 28px; }
+  .hero-desc { font-size: 16px; }
+  .status-panel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .feature-grid { grid-template-columns: 1fr; }
+  .feature-card { min-height: auto; }
+}
+
+@media (max-width: 520px) {
+  .top-nav { padding: 12px; gap: 12px; }
+  .brand-mark { width: 38px; height: 38px; }
+  .brand span { font-size: 12px; }
+  .nav-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .nav-actions .el-button { margin-left: 0; min-height: 38px; }
+  .nav-actions .el-button:last-child { grid-column: 1 / -1; }
+  .home-main { width: calc(100% - 20px); padding: 12px 0 36px; }
+  .hero { padding: 22px; }
+  .hero h1 { font-size: 32px; }
+  .hero-actions { display: grid; grid-template-columns: 1fr; }
+  .hero-actions .el-button { margin-left: 0; }
+  .status-panel { grid-template-columns: 1fr; }
+  .section-heading h2, .stack-panel h2 { font-size: 24px; }
+  .feature-card, .flow-step, .stack-panel { padding: 18px; }
+  .flow-step { grid-template-columns: 1fr; }
 }
 </style>
