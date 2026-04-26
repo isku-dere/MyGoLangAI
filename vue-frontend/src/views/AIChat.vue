@@ -158,6 +158,7 @@ export default {
     const sessionDrawerVisible = ref(false)
     const currentTTSAudio = ref(null)
     const ttsRequestSerial = ref(0)
+    const currentTTSUtterance = ref(null)
 
 
     const escapeHtml = (value) => String(value)
@@ -281,6 +282,10 @@ export default {
 
     const stopCurrentTTS = () => {
       ttsRequestSerial.value += 1
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel()
+      }
+      currentTTSUtterance.value = null
       if (currentTTSAudio.value) {
         currentTTSAudio.value.pause()
         currentTTSAudio.value.currentTime = 0
@@ -288,10 +293,36 @@ export default {
       }
     }
 
-    const playTTS = async (text) => {
-      stopCurrentTTS()
-      const requestSerial = ttsRequestSerial.value
+    const playBrowserTTS = (text, requestSerial) => new Promise((resolve, reject) => {
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+        reject(new Error('browser tts unsupported'))
+        return
+      }
 
+      const utterance = new window.SpeechSynthesisUtterance(String(text || ''))
+      utterance.lang = 'zh-CN'
+      utterance.rate = 1
+      utterance.pitch = 1
+      utterance.volume = 1
+      currentTTSUtterance.value = utterance
+
+      utterance.onend = () => {
+        if (currentTTSUtterance.value === utterance) {
+          currentTTSUtterance.value = null
+        }
+        resolve(true)
+      }
+      utterance.onerror = (event) => {
+        if (requestSerial === ttsRequestSerial.value) {
+          currentTTSUtterance.value = null
+        }
+        reject(event.error || new Error('browser tts failed'))
+      }
+
+      window.speechSynthesis.speak(utterance)
+    })
+
+    const playRemoteTTS = async (text, requestSerial) => {
       try {
         // 创建TTS任务
         const createResponse = await api.post('/AI/chat/tts', { text })
@@ -364,6 +395,19 @@ export default {
       } catch (error) {
         console.error('TTS error:', error)
         ElMessage.error('请求语音接口失败')
+      }
+    }
+
+    const playTTS = async (text) => {
+      stopCurrentTTS()
+      const requestSerial = ttsRequestSerial.value
+
+      try {
+        await playBrowserTTS(text, requestSerial)
+      } catch (error) {
+        if (requestSerial !== ttsRequestSerial.value) return
+        console.warn('Browser TTS unavailable, fallback to API:', error)
+        await playRemoteTTS(text, requestSerial)
       }
     }
 
