@@ -64,9 +64,10 @@ type VoiceServiceConfig struct {
 }
 
 type OCRConfig struct {
-	APIURL        string `toml:"apiUrl"`
-	Token         string `toml:"token"`
-	TimeoutSecond int    `toml:"timeoutSecond"`
+	APIURL            string `toml:"apiUrl"`
+	Token             string `toml:"token"`
+	TimeoutSecond     int    `toml:"timeoutSecond"`
+	WorkerConcurrency int    `toml:"workerConcurrency"`
 }
 
 type Config struct {
@@ -135,6 +136,14 @@ func applyEnvOverrides(c *Config) {
 		if timeout, err := strconv.Atoi(value); err == nil {
 			c.TimeoutSecond = timeout
 		}
+	}
+	if value := os.Getenv("OCR_WORKER_CONCURRENCY"); value != "" {
+		if concurrency, err := strconv.Atoi(value); err == nil {
+			c.WorkerConcurrency = concurrency
+		}
+	}
+	if c.WorkerConcurrency <= 0 {
+		c.WorkerConcurrency = 2
 	}
 }
 

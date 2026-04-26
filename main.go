@@ -8,6 +8,7 @@ import (
 	"GopherAI/config"
 	"GopherAI/dao/message"
 	"GopherAI/router"
+	ocrservice "GopherAI/service/ocr"
 	"fmt"
 	"log"
 )
@@ -66,6 +67,8 @@ func main() {
 	log.Println("redis init success  ")
 	rabbitmq.InitRabbitMQ()
 	log.Println("rabbitmq init success  ")
+	ocrservice.StartOCRWorkers()
+	log.Println("ocr workers init success  ")
 
 	err := StartServer(host, port) // 启动 HTTP 服务
 	if err != nil {

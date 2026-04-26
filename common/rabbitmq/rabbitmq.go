@@ -4,6 +4,7 @@ import (
 	"GopherAI/config"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/streadway/amqp"
 )
@@ -31,6 +32,7 @@ func initConn() {
 type RabbitMQ struct {
 	conn     *amqp.Connection
 	channel  *amqp.Channel
+	mu       sync.Mutex
 	Exchange string
 	Key      string
 }
@@ -67,11 +69,18 @@ func NewWorkRabbitMQ(queue string) *RabbitMQ {
 	return rabbitmq
 }
 
+func (r *RabbitMQ) declareQueue() (amqp.Queue, error) {
+	return r.channel.QueueDeclare(r.Key, false, false, false, false, nil)
+}
+
 // Publish 发送消息
 func (r *RabbitMQ) Publish(message []byte) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	// 创建队列（不存在时）
 	// 使用默认交换机的情况下，queue即为key
-	_, err := r.channel.QueueDeclare(r.Key, false, false, false, false, nil)
+	_, err := r.declareQueue()
 	if err != nil {
 		return err
 	}
@@ -89,7 +98,7 @@ func (r *RabbitMQ) Publish(message []byte) error {
 // handle: 消息的消费业务函数，用于消费消息
 func (r *RabbitMQ) Consume(handle func(msg *amqp.Delivery) error) {
 	// 创建队列
-	q, err := r.channel.QueueDeclare(r.Key, false, false, false, false, nil)
+	q, err := r.declareQueue()
 	if err != nil {
 		panic(err)
 	}
@@ -103,6 +112,34 @@ func (r *RabbitMQ) Consume(handle func(msg *amqp.Delivery) error) {
 	// 处理消息
 	for msg := range msgs {
 		if err := handle(&msg); err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+}
+
+func (r *RabbitMQ) ConsumeManual(prefetch int, handle func(msg *amqp.Delivery) error) {
+	q, err := r.declareQueue()
+	if err != nil {
+		panic(err)
+	}
+
+	if prefetch <= 0 {
+		prefetch = 1
+	}
+	if err := r.channel.Qos(prefetch, 0, false); err != nil {
+		panic(err)
+	}
+
+	msgs, err := r.channel.Consume(q.Name, "", false, false, false, false, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	for msg := range msgs {
+		if err := handle(&msg); err != nil {
+			fmt.Println(err.Error())
+		}
+		if err := msg.Ack(false); err != nil {
 			fmt.Println(err.Error())
 		}
 	}

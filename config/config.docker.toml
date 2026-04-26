@@ -49,3 +49,4 @@ voiceServiceSecretKey = "baiduSecretKey"
 apiUrl = "https://ffrfp796j3z7u525.aistudio-app.com/layout-parsing"
 token = ""
 timeoutSecond = 120
+workerConcurrency = 2

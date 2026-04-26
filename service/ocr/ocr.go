@@ -1,6 +1,7 @@
 package ocr
 
 import (
+	"GopherAI/common/rabbitmq"
 	"GopherAI/config"
 	ocrdao "GopherAI/dao/ocr_task"
 	"GopherAI/model"
@@ -17,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/streadway/amqp"
 )
 
 const (
@@ -34,6 +37,11 @@ type layoutParsingResponse struct {
 			} `json:"markdown"`
 		} `json:"layoutParsingResults"`
 	} `json:"result"`
+}
+
+type taskMessage struct {
+	TaskID   string `json:"task_id"`
+	UserName string `json:"username"`
 }
 
 func CreateOCRTask(username string, file *multipart.FileHeader) (*model.OCRTask, error) {
@@ -69,7 +77,10 @@ func CreateOCRTask(username string, file *multipart.FileHeader) (*model.OCRTask,
 		return nil, err
 	}
 
-	go processTask(task.ID, username)
+	if err := publishTask(task.ID, username); err != nil {
+		markFailed(task, fmt.Errorf("failed to enqueue OCR task: %w", err))
+		return nil, err
+	}
 	return task, nil
 }
 
@@ -81,18 +92,78 @@ func IsTerminalStatus(status string) bool {
 	return status == TaskStatusSucceeded || status == TaskStatusFailed
 }
 
-func processTask(taskID, username string) {
+func StartOCRWorkers() {
+	concurrency := config.GetConfig().WorkerConcurrency
+	if concurrency <= 0 {
+		concurrency = 2
+	}
+
+	requeueUnfinishedTasks()
+	for i := 0; i < concurrency; i++ {
+		workerID := i + 1
+		go func() {
+			consumer := rabbitmq.NewWorkRabbitMQ(rabbitmq.QueueOCRTask)
+			log.Printf("OCR worker %d started", workerID)
+			consumer.ConsumeManual(1, handleTaskMessage)
+		}()
+	}
+}
+
+func requeueUnfinishedTasks() {
+	if err := ocrdao.ResetStatus(TaskStatusRunning, TaskStatusPending); err != nil {
+		log.Printf("Failed to reset running OCR tasks: %v", err)
+		return
+	}
+
+	tasks, err := ocrdao.ListByStatuses([]string{TaskStatusPending, TaskStatusRunning})
+	if err != nil {
+		log.Printf("Failed to load unfinished OCR tasks: %v", err)
+		return
+	}
+
+	for _, task := range tasks {
+		if err := publishTask(task.ID, task.UserName); err != nil {
+			log.Printf("Failed to requeue OCR task %s: %v", task.ID, err)
+		}
+	}
+}
+
+func handleTaskMessage(msg *amqp.Delivery) error {
+	var param taskMessage
+	if err := json.Unmarshal(msg.Body, &param); err != nil {
+		return err
+	}
+	if param.TaskID == "" || param.UserName == "" {
+		return fmt.Errorf("invalid OCR task message")
+	}
+
+	ProcessTask(param.TaskID, param.UserName)
+	return nil
+}
+
+func ProcessTask(taskID, username string) {
 	task, err := ocrdao.GetByUserNameAndID(username, taskID)
 	if err != nil {
 		log.Printf("Failed to load OCR task %s: %v", taskID, err)
 		return
 	}
+	if IsTerminalStatus(task.Status) {
+		return
+	}
+	if task.Status != TaskStatusPending {
+		return
+	}
 
-	task.Status = TaskStatusRunning
-	if err := ocrdao.Update(task); err != nil {
+	claimed, err := ocrdao.ClaimPending(username, taskID, TaskStatusPending, TaskStatusRunning)
+	if err != nil {
 		log.Printf("Failed to mark OCR task running %s: %v", taskID, err)
 		return
 	}
+	if !claimed {
+		return
+	}
+	task.Status = TaskStatusRunning
+	task.ErrorMsg = ""
 
 	markdown, err := parseFile(task.FilePath, task.FileType)
 	if err != nil {
@@ -111,6 +182,18 @@ func processTask(taskID, username string) {
 	if err := ocrdao.Update(task); err != nil {
 		log.Printf("Failed to mark OCR task succeeded %s: %v", taskID, err)
 	}
+}
+
+func publishTask(taskID, username string) error {
+	if rabbitmq.RMQOCRPublisher == nil {
+		return fmt.Errorf("OCR queue publisher is not initialized")
+	}
+
+	data, err := json.Marshal(taskMessage{TaskID: taskID, UserName: username})
+	if err != nil {
+		return err
+	}
+	return rabbitmq.RMQOCRPublisher.Publish(data)
 }
 
 func parseFile(filePath string, fileType int) (string, error) {

@@ -1,8 +1,10 @@
 package rabbitmq
 
-var (
+const QueueOCRTask = "OCRTask"
 
-	RMQMessage *RabbitMQ
+var (
+	RMQMessage      *RabbitMQ
+	RMQOCRPublisher *RabbitMQ
 )
 
 func InitRabbitMQ() {
@@ -11,6 +13,7 @@ func InitRabbitMQ() {
 	// 不同队列共用一个连接，可以保持不同队列消费消息的顺序
 
 	RMQMessage = NewWorkRabbitMQ("Message")
+	RMQOCRPublisher = NewWorkRabbitMQ(QueueOCRTask)
 	go RMQMessage.Consume(MQMessage)
 
 }
@@ -18,4 +21,5 @@ func InitRabbitMQ() {
 // DestroyRabbitMQ 销毁RabbitMQ
 func DestroyRabbitMQ() {
 	RMQMessage.Destroy()
+	RMQOCRPublisher.Destroy()
 }

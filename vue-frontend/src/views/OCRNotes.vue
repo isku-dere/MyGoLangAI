@@ -207,7 +207,7 @@ export default {
         fd.append('file', uploadFile, item.name)
         const res = await api.post('/file/ocr/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
         if (!res.data || res.data.status_code !== 1000) throw new Error(res.data?.status_msg || t.uploadFailed)
-        item.taskId = res.data.task_id; item.status = 'processing'; watchTask(item)
+        item.taskId = res.data.task_id; item.status = res.data.status === 'pending' ? 'pending' : 'processing'; watchTask(item)
       } catch (e) { item.status = 'error'; item.finishedAt = performance.now(); item.elapsedText = formatMs(item.finishedAt - item.startedAt); item.error = e.message }
     }
 
@@ -245,6 +245,7 @@ export default {
     const poll = item => { item.timer = window.setInterval(() => refresh(item), 2000); refresh(item) }
     const refresh = async item => { const res = await api.get(`/file/ocr/tasks/${item.taskId}`); if (res.data?.task) updateTask(item, res.data.task) }
     const updateTask = (item, task) => {
+      if (task.status === 'pending') item.status = 'pending'
       if (task.status === 'running') item.status = 'processing'
       if (task.status === 'succeeded') { item.status = 'done'; item.finishedAt = performance.now(); item.documentId = task.document_id || ''; item.markdown = task.result || item.markdown; item.original = item.original || item.markdown; item.elapsedText = taskDuration(task) || formatMs(item.finishedAt - item.startedAt); cleanup(item) }
       if (task.status === 'failed') { item.status = 'error'; item.finishedAt = performance.now(); item.error = task.error_msg || t.ocrFailed; item.elapsedText = taskDuration(task) || formatMs(item.finishedAt - item.startedAt); cleanup(item) }
@@ -324,7 +325,7 @@ export default {
     const rotateSelected = delta => { if (selected.value && selected.value.previewUrl) selected.value.rotation = normalizeRotation(selected.value.rotation + delta) }
     const resetRotation = () => { if (selected.value) selected.value.rotation = 0 }
     const previewStyle = item => ({ transform: `rotate(${item.rotation}deg)` })
-    const isBusy = status => ['uploading', 'processing'].includes(status)
+    const isBusy = status => ['uploading', 'pending', 'processing'].includes(status)
     const normalizeRotation = value => ((value % 360) + 360) % 360
     const formatMs = ms => { if (!Number.isFinite(ms) || ms < 0) return ''; const seconds = ms / 1000; return seconds < 60 ? `${seconds.toFixed(1)}s` : `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s` }
     const taskDuration = task => { const start = Date.parse(task.created_at || ''); const end = Date.parse(task.updated_at || ''); return Number.isFinite(start) && Number.isFinite(end) && end >= start ? formatMs(end - start) : '' }
@@ -332,8 +333,8 @@ export default {
     const download = (text, name) => { const a = document.createElement('a'); const u = URL.createObjectURL(new Blob([text || ''], { type: 'text/markdown;charset=utf-8' })); a.href = u; a.download = name.replace(/[\\/:*?"<>|]/g, '_'); a.click(); URL.revokeObjectURL(u) }
     const esc = value => String(value || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
     const render = value => esc(value).replace(/^### (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<h2>$1</h2>').replace(/^# (.*)$/gm, '<h1>$1</h1>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\n/g, '<br>')
-    const statusText = s => ({ ready: '\u5f85\u8bc6\u522b', uploading: '\u4e0a\u4f20\u4e2d', processing: '\u8bc6\u522b\u4e2d', done: '\u5df2\u5b8c\u6210', error: '\u5931\u8d25' }[s] || s)
-    const tagType = s => ({ ready: 'info', uploading: 'warning', processing: 'primary', done: 'success', error: 'danger' }[s] || 'info')
+    const statusText = s => ({ ready: '\u5f85\u8bc6\u522b', uploading: '\u4e0a\u4f20\u4e2d', pending: '\u6392\u961f\u4e2d', processing: '\u8bc6\u522b\u4e2d', done: '\u5df2\u5b8c\u6210', error: '\u5931\u8d25' }[s] || s)
+    const tagType = s => ({ ready: 'info', uploading: 'warning', pending: 'warning', processing: 'primary', done: 'success', error: 'danger' }[s] || 'info')
     const sourceName = s => ({ upload: t.sourceUpload, ocr: t.sourceOcr, ocr_summary: t.sourceSummary }[s] || s || t.unknown)
 
     const handleSummaryKeydown = event => {
