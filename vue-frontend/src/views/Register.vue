@@ -83,7 +83,7 @@
 <script>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../utils/api'
 
 export default {
@@ -166,7 +166,12 @@ export default {
               password: registerForm.password
         })
         if (response.data.status_code === 1000) {
-          ElMessage.success('注册成功，请登录')
+          const username = response.data.username || '请查看邮箱中的账号信息'
+          await ElMessageBox.alert(
+            `你的登录账号是：${username}\n\n账号已发送到邮箱：${registerForm.email}\n请使用该账号和密码登录。`,
+            '注册成功',
+            { confirmButtonText: '去登录' }
+          )
           router.push('/login')
         } else {
           ElMessage.error(response.data.status_msg || '注册失败')

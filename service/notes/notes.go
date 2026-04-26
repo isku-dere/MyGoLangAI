@@ -167,7 +167,7 @@ func streamSummary(ctx context.Context, title string, inputs []SummaryNoteInput,
 }
 
 func systemPrompt() string {
-	return "You convert OCR markdown from handwritten notes into clean study notes. Output only the final Markdown note. Do not include explanations, source labels, metadata, OCR comments, or unrelated information."
+	return "You convert rough handwritten-note markdown into clean study notes. Output only the final Markdown note. Do not include explanations, source labels, metadata, correction notes, error analysis, or unrelated information."
 }
 
 func buildPrompt(title string, inputs []SummaryNoteInput) string {
@@ -177,7 +177,7 @@ func buildPrompt(title string, inputs []SummaryNoteInput) string {
 	builder.WriteString("1. Output only the Markdown note content.\n")
 	builder.WriteString("2. Keep only knowledge and learning content; remove OCR metadata, file names, process notes, apologies, and commentary.\n")
 	builder.WriteString("3. Preserve the original note structure as much as possible, including headings, lists, formulas, tables, and code blocks.\n")
-	builder.WriteString("4. Correct obvious OCR noise, duplicated fragments, and broken line wraps without inventing facts.\n")
+	builder.WriteString("4. Rewrite meaningless or corrupted fragments into coherent note content when the intended meaning is clear; remove fragments that cannot be recovered; do not mention recognition errors or correction steps.\n")
 	builder.WriteString("5. Use the provided title as the main H1 heading unless the source already has a better H1.\n\n")
 	builder.WriteString("Title: ")
 	builder.WriteString(title)

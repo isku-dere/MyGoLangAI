@@ -124,13 +124,117 @@ export default {
     const editingTitle = ref('')
 
 
+    const escapeHtml = (value) => String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+
+    const renderInlineMarkdown = (value) => escapeHtml(value)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+
+    const flushParagraph = (paragraph, output) => {
+      if (paragraph.length > 0) {
+        output.push(`<p>${paragraph.map(renderInlineMarkdown).join('<br>')}</p>`)
+        paragraph.length = 0
+      }
+    }
+
     const renderMarkdown = (text) => {
       if (!text && text !== '') return ''
-      return String(text)
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`(.*?)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>')
+      const lines = String(text).replace(/\r\n/g, '\n').split('\n')
+      const output = []
+      const paragraph = []
+      let inCodeBlock = false
+      let codeLines = []
+      let listType = null
+
+      const closeList = () => {
+        if (listType) {
+          output.push(`</${listType}>`)
+          listType = null
+        }
+      }
+
+      for (const line of lines) {
+        if (/^```/.test(line)) {
+          if (inCodeBlock) {
+            output.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
+            codeLines = []
+            inCodeBlock = false
+          } else {
+            flushParagraph(paragraph, output)
+            closeList()
+            inCodeBlock = true
+          }
+          continue
+        }
+
+        if (inCodeBlock) {
+          codeLines.push(line)
+          continue
+        }
+
+        if (!line.trim()) {
+          flushParagraph(paragraph, output)
+          closeList()
+          continue
+        }
+
+        const heading = line.match(/^(#{1,3})\s+(.+)$/)
+        if (heading) {
+          flushParagraph(paragraph, output)
+          closeList()
+          const level = heading[1].length
+          output.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`)
+          continue
+        }
+
+        const quote = line.match(/^>\s?(.+)$/)
+        if (quote) {
+          flushParagraph(paragraph, output)
+          closeList()
+          output.push(`<blockquote>${renderInlineMarkdown(quote[1])}</blockquote>`)
+          continue
+        }
+
+        const unordered = line.match(/^[-*+]\s+(.+)$/)
+        if (unordered) {
+          flushParagraph(paragraph, output)
+          if (listType !== 'ul') {
+            closeList()
+            output.push('<ul>')
+            listType = 'ul'
+          }
+          output.push(`<li>${renderInlineMarkdown(unordered[1])}</li>`)
+          continue
+        }
+
+        const ordered = line.match(/^\d+[.)]\s+(.+)$/)
+        if (ordered) {
+          flushParagraph(paragraph, output)
+          if (listType !== 'ol') {
+            closeList()
+            output.push('<ol>')
+            listType = 'ol'
+          }
+          output.push(`<li>${renderInlineMarkdown(ordered[1])}</li>`)
+          continue
+        }
+
+        closeList()
+        paragraph.push(line)
+      }
+
+      if (inCodeBlock) {
+        output.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
+      }
+      flushParagraph(paragraph, output)
+      closeList()
+      return output.join('')
     }
 
     const summarizeLocalTitle = (text) => {
@@ -1101,8 +1205,77 @@ export default {
 
 /* message content */
 .message-content {
-  white-space: pre-wrap;
   word-break: break-word;
+  line-height: 1.7;
+}
+
+.message-content :deep(p) {
+  margin: 0 0 10px;
+}
+
+.message-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.message-content :deep(h1),
+.message-content :deep(h2),
+.message-content :deep(h3) {
+  margin: 14px 0 8px;
+  line-height: 1.35;
+  color: #1f2d3d;
+}
+
+.message-content :deep(h1) {
+  font-size: 20px;
+}
+
+.message-content :deep(h2) {
+  font-size: 18px;
+}
+
+.message-content :deep(h3) {
+  font-size: 16px;
+}
+
+.message-content :deep(ul),
+.message-content :deep(ol) {
+  margin: 8px 0 12px 20px;
+  padding: 0;
+}
+
+.message-content :deep(li) {
+  margin: 4px 0;
+}
+
+.message-content :deep(blockquote) {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 4px solid #8aa4ff;
+  background: rgba(102, 126, 234, 0.08);
+  border-radius: 8px;
+}
+
+.message-content :deep(code) {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(31, 45, 61, 0.08);
+  font-family: "Fira Code", "Consolas", monospace;
+  font-size: 0.92em;
+}
+
+.message-content :deep(pre) {
+  margin: 10px 0;
+  padding: 12px;
+  overflow-x: auto;
+  border-radius: 10px;
+  background: #1f2937;
+  color: #f8fafc;
+}
+
+.message-content :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  color: inherit;
 }
 
 /* input area */
