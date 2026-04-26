@@ -3,3 +3,4 @@ deploy/.env
 deploy/config.runtime.toml
 deploy/acme
 *.log
+.codex
