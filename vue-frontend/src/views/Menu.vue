@@ -13,13 +13,6 @@
             <p>{{ text.chatDesc }}</p>
           </div>
         </el-card>
-        <el-card class="menu-item" @click="$router.push('/image-recognition')">
-          <div class="card-content">
-            <el-icon size="48" color="#67c23a"><Camera /></el-icon>
-            <h3>{{ text.imageTitle }}</h3>
-            <p>{{ text.imageDesc }}</p>
-          </div>
-        </el-card>
         <el-card class="menu-item" @click="$router.push('/ocr-notes')">
           <div class="card-content">
             <el-icon size="48" color="#d98146"><Document /></el-icon>
@@ -35,15 +28,13 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ChatDotRound, Camera, Document } from '@element-plus/icons-vue'
+import { ChatDotRound, Document } from '@element-plus/icons-vue'
 
 const text = {
   title: 'AI\u529f\u80fd\u4e2d\u5fc3',
   logout: '\u9000\u51fa\u767b\u5f55',
   chatTitle: 'AI\u5bf9\u8bdd',
   chatDesc: '\u4e0e AI \u8fdb\u884c\u667a\u80fd\u5bf9\u8bdd',
-  imageTitle: '\u56fe\u50cf\u8bc6\u522b',
-  imageDesc: '\u4e0a\u4f20\u56fe\u7247\u8fdb\u884c AI \u8bc6\u522b',
   ocrTitle: 'OCR \u7b14\u8bb0',
   ocrDesc: '\u6279\u91cf\u8bc6\u522b\u624b\u5199\u5185\u5bb9\uff0c\u751f\u6210 Markdown \u5e76\u5199\u5165\u77e5\u8bc6\u5e93',
   confirmLogout: '\u786e\u5b9a\u8981\u9000\u51fa\u767b\u5f55\u5417\uff1f',
@@ -55,7 +46,7 @@ const text = {
 
 export default {
   name: 'MenuView',
-  components: { ChatDotRound, Camera, Document },
+  components: { ChatDotRound, Document },
   setup() {
     const router = useRouter()
     const handleLogout = async () => {

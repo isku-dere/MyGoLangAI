@@ -78,7 +78,6 @@
         <select id="modelType" v-model="selectedModel" class="model-select">
           <option value="1">阿里百炼</option>
           <option value="2">阿里百炼 RAG</option>
-          <option value="3">阿里百炼 MCP</option>
         </select>
         <label for="streamingMode" class="streaming-label">
           <input type="checkbox" id="streamingMode" v-model="isStreaming" />
