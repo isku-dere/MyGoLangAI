@@ -156,6 +156,8 @@ export default {
     const editingSessionId = ref(null)
     const editingTitle = ref('')
     const sessionDrawerVisible = ref(false)
+    const currentTTSAudio = ref(null)
+    const ttsRequestSerial = ref(0)
 
 
     const escapeHtml = (value) => String(value)
@@ -277,15 +279,30 @@ export default {
       return cleaned.length > 24 ? `${cleaned.slice(0, 24)}...` : cleaned
     }
 
+    const stopCurrentTTS = () => {
+      ttsRequestSerial.value += 1
+      if (currentTTSAudio.value) {
+        currentTTSAudio.value.pause()
+        currentTTSAudio.value.currentTime = 0
+        currentTTSAudio.value = null
+      }
+    }
+
     const playTTS = async (text) => {
+      stopCurrentTTS()
+      const requestSerial = ttsRequestSerial.value
+
       try {
         // 创建TTS任务
         const createResponse = await api.post('/AI/chat/tts', { text })
+        if (requestSerial !== ttsRequestSerial.value) return
+
         if (createResponse.data && createResponse.data.status_code === 1000 && createResponse.data.task_id) {
           const taskId = createResponse.data.task_id
           
           // 先等待5秒钟再开始轮询
           await new Promise(resolve => setTimeout(resolve, 5000))
+          if (requestSerial !== ttsRequestSerial.value) return
           
           // 轮询查询任务结果
           const maxAttempts = 30
@@ -293,7 +310,9 @@ export default {
           let attempts = 0
           
           const pollResult = async () => {
+            if (requestSerial !== ttsRequestSerial.value) return true
             const queryResponse = await api.get('/AI/chat/tts/query', { params: { task_id: taskId } })
+            if (requestSerial !== ttsRequestSerial.value) return true
             
             if (queryResponse.data && queryResponse.data.status_code === 1000) {
               const taskStatus = queryResponse.data.task_status
@@ -302,13 +321,20 @@ export default {
                 // 任务完成，播放音频
                 // 后端返回的 task_result 是直接的 URL 字符串
                 const audio = new Audio(queryResponse.data.task_result)
-                audio.play()
+                currentTTSAudio.value = audio
+                audio.onended = () => {
+                  if (currentTTSAudio.value === audio) {
+                    currentTTSAudio.value = null
+                  }
+                }
+                await audio.play()
                 return true
               } else if (taskStatus === 'Running' ||taskStatus === 'Created' ) {
                 // 任务进行中，继续轮询
                 attempts++
                 if (attempts < maxAttempts) {
                   await new Promise(resolve => setTimeout(resolve, pollInterval))
+                  if (requestSerial !== ttsRequestSerial.value) return true
                   return await pollResult()
                 } else {
                   ElMessage.error('语音合成超时')
