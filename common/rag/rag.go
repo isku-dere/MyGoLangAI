@@ -63,7 +63,7 @@ func NewRAGIndexer(username, embeddingModel string) (*RAGIndexer, error) {
 			}
 
 			return &redisIndexer.Hashes{
-				Key: fmt.Sprintf("%s%s", keyPrefix, doc.ID),
+				Key: doc.ID,
 				Field2Value: map[string]redisIndexer.FieldValue{
 					"content":  {Value: doc.Content, EmbedKey: "vector"},
 					"metadata": {Value: source},
@@ -118,8 +118,19 @@ func DeleteIndex(ctx context.Context, username string) error {
 }
 
 func DeleteDocument(ctx context.Context, username, documentID string) error {
-	key := fmt.Sprintf("%s%s", redis.GenerateIndexNamePrefix(username), documentID)
-	if err := redisPkg.Rdb.Del(ctx, key).Err(); err != nil {
+	prefix := redis.GenerateIndexNamePrefix(username)
+	iter := redisPkg.Rdb.Scan(ctx, 0, fmt.Sprintf("%s*%s*", prefix, documentID), 100).Iterator()
+	keys := make([]string, 0, 1)
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("failed to scan redis document keys: %w", err)
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+	if err := redisPkg.Rdb.Del(ctx, keys...).Err(); err != nil {
 		return fmt.Errorf("failed to delete redis document: %w", err)
 	}
 	return nil
