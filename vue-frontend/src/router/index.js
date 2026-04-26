@@ -3,7 +3,6 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Menu from '../views/Menu.vue'
 import AIChat from '../views/AIChat.vue'
-import ImageRecognition from '../views/ImageRecognition.vue'
 import OCRNotes from '../views/OCRNotes.vue'
 
 const routes = [
@@ -12,7 +11,6 @@ const routes = [
   { path: '/register', name: 'Register', component: Register },
   { path: '/menu', name: 'Menu', component: Menu, meta: { requiresAuth: true } },
   { path: '/ai-chat', name: 'AIChat', component: AIChat, meta: { requiresAuth: true } },
-  { path: '/image-recognition', name: 'ImageRecognition', component: ImageRecognition, meta: { requiresAuth: true } },
   { path: '/ocr-notes', name: 'OCRNotes', component: OCRNotes, meta: { requiresAuth: true } }
 ]
 

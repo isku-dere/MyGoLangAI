@@ -78,7 +78,6 @@
         <select id="modelType" v-model="selectedModel" class="model-select">
           <option value="1">阿里百炼</option>
           <option value="2">阿里百炼 RAG</option>
-          <option value="3">阿里百炼 MCP</option>
         </select>
         <label for="streamingMode" class="streaming-label">
           <input type="checkbox" id="streamingMode" v-model="isStreaming" />
@@ -640,7 +639,7 @@ export default {
                 }
               } else {
                 // 普通文本数据，直接追加
-                // 使用数组索引直接更新，强制 Vue 响应式系统检测变化
+                // 使用数组索引直接更新，确保消息列表刷新。
                 currentMessages.value[aiMessageIndex].content += data
                 console.log('[SSE] Content updated:', currentMessages.value[aiMessageIndex].content.length)
               }
