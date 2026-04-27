@@ -101,7 +101,14 @@
         >
           <div class="message-header">
             <b>{{ message.role === 'user' ? '你' : 'AI' }}:</b>
-            <button v-if="message.role === 'assistant'" class="tts-btn" @click="playTTS(message.content)">🔊</button>
+            <button v-if="message.role === 'assistant'" class="tts-btn" @click="playTTS(message.content, index)">🔊</button>
+            <button
+              v-if="message.role === 'assistant' && isTTSActive && activeTTSMessageIndex === index"
+              class="tts-stop-btn"
+              @click="stopCurrentTTS"
+            >
+              停止
+            </button>
             <span v-if="message.meta && message.meta.status === 'streaming'" class="streaming-indicator"> ··</span>
           </div>
           <div class="message-content" v-html="renderMarkdown(message.content)"></div>
@@ -159,6 +166,8 @@ export default {
     const currentTTSAudio = ref(null)
     const ttsRequestSerial = ref(0)
     const currentTTSUtterance = ref(null)
+    const isTTSActive = ref(false)
+    const activeTTSMessageIndex = ref(null)
 
 
     const escapeHtml = (value) => String(value)
@@ -286,6 +295,8 @@ export default {
         window.speechSynthesis.cancel()
       }
       currentTTSUtterance.value = null
+      isTTSActive.value = false
+      activeTTSMessageIndex.value = null
       if (currentTTSAudio.value) {
         currentTTSAudio.value.pause()
         currentTTSAudio.value.currentTime = 0
@@ -309,12 +320,16 @@ export default {
       utterance.onend = () => {
         if (currentTTSUtterance.value === utterance) {
           currentTTSUtterance.value = null
+          isTTSActive.value = false
+          activeTTSMessageIndex.value = null
         }
         resolve(true)
       }
       utterance.onerror = (event) => {
         if (requestSerial === ttsRequestSerial.value) {
           currentTTSUtterance.value = null
+          isTTSActive.value = false
+          activeTTSMessageIndex.value = null
         }
         reject(event.error || new Error('browser tts failed'))
       }
@@ -356,6 +371,8 @@ export default {
                 audio.onended = () => {
                   if (currentTTSAudio.value === audio) {
                     currentTTSAudio.value = null
+                    isTTSActive.value = false
+                    activeTTSMessageIndex.value = null
                   }
                 }
                 await audio.play()
@@ -369,11 +386,15 @@ export default {
                   return await pollResult()
                 } else {
                   ElMessage.error('语音合成超时')
+                  isTTSActive.value = false
+                  activeTTSMessageIndex.value = null
                   return true
                 }
               } else {
                 // 其他状态（如失败）
                 ElMessage.error('语音合成失败')
+                isTTSActive.value = false
+                activeTTSMessageIndex.value = null
                 return true
               }
             }
@@ -384,6 +405,8 @@ export default {
               return await pollResult()
             } else {
               ElMessage.error('语音合成超时')
+              isTTSActive.value = false
+              activeTTSMessageIndex.value = null
               return true
             }
           }
@@ -391,22 +414,30 @@ export default {
           await pollResult()
         } else {
           ElMessage.error('无法创建语音合成任务')
+          isTTSActive.value = false
+          activeTTSMessageIndex.value = null
         }
       } catch (error) {
         console.error('TTS error:', error)
         ElMessage.error('请求语音接口失败')
+        isTTSActive.value = false
+        activeTTSMessageIndex.value = null
       }
     }
 
-    const playTTS = async (text) => {
+    const playTTS = async (text, messageIndex) => {
       stopCurrentTTS()
       const requestSerial = ttsRequestSerial.value
+      isTTSActive.value = true
+      activeTTSMessageIndex.value = messageIndex
 
       try {
         await playBrowserTTS(text, requestSerial)
       } catch (error) {
         if (requestSerial !== ttsRequestSerial.value) return
         console.warn('Browser TTS unavailable, fallback to API:', error)
+        isTTSActive.value = true
+        activeTTSMessageIndex.value = messageIndex
         await playRemoteTTS(text, requestSerial)
       }
     }
@@ -891,8 +922,11 @@ export default {
       editingSessionId,
       editingTitle,
       sessionDrawerVisible,
+      isTTSActive,
+      activeTTSMessageIndex,
       renderMarkdown,
       playTTS,
+      stopCurrentTTS,
       startRename,
       cancelRename,
       saveSessionTitle,
@@ -1333,6 +1367,23 @@ export default {
 .tts-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(103, 194, 58, 0.25);
+}
+
+.tts-stop-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #ef4444;
+  color: white;
+  border: none;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.18);
+}
+
+.tts-stop-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
 }
 
 .streaming-indicator {
