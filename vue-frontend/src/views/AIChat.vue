@@ -701,6 +701,9 @@ export default {
                       currentSessionId.value = newSid
                       tempSession.value = false
                     }
+                  } else if (Object.prototype.hasOwnProperty.call(parsed, 'delta')) {
+                    currentMessages.value[aiMessageIndex].content += parsed.delta || ''
+                    console.log('[SSE] Content updated:', currentMessages.value[aiMessageIndex].content.length)
                   }
                 } catch (e) {
                   // 不是 JSON，当作普通文本处理

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	embeddingArk "github.com/cloudwego/eino-ext/components/embedding/ark"
 	redisIndexer "github.com/cloudwego/eino-ext/components/indexer/redis"
@@ -86,7 +87,13 @@ func NewRAGIndexer(username, embeddingModel string) (*RAGIndexer, error) {
 	}, nil
 }
 
+func NormalizeDocumentID(username, documentID string) string {
+	prefix := redis.GenerateIndexNamePrefix(username)
+	return strings.TrimPrefix(documentID, prefix)
+}
+
 func (r *RAGIndexer) IndexText(ctx context.Context, documentID, content, source string) error {
+	documentID = NormalizeDocumentID(r.knowledgeBase, documentID)
 	doc := &schema.Document{
 		ID:      documentID,
 		Content: content,
@@ -118,9 +125,17 @@ func DeleteIndex(ctx context.Context, username string) error {
 }
 
 func DeleteDocument(ctx context.Context, username, documentID string) error {
+	documentID = NormalizeDocumentID(username, documentID)
 	prefix := redis.GenerateIndexNamePrefix(username)
-	iter := redisPkg.Rdb.Scan(ctx, 0, fmt.Sprintf("%s*%s*", prefix, documentID), 100).Iterator()
 	keys := make([]string, 0, 1)
+	exactKey := prefix + documentID
+	if exists, err := redisPkg.Rdb.Exists(ctx, exactKey).Result(); err != nil {
+		return fmt.Errorf("failed to check redis document key: %w", err)
+	} else if exists > 0 {
+		keys = append(keys, exactKey)
+	}
+
+	iter := redisPkg.Rdb.Scan(ctx, 0, fmt.Sprintf("%s*%s*", prefix, documentID), 100).Iterator()
 	for iter.Next(ctx) {
 		keys = append(keys, iter.Val())
 	}

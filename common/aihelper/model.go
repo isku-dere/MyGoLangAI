@@ -197,6 +197,8 @@ func (o *AliRAGModel) GenerateResponse(ctx context.Context, messages []*schema.M
 	}
 
 	// 4. 构建包含检索结果的提示词
+	log.Printf("[RAG] user=%s mode=sync docs=%d query=%q", o.username, len(docs), query)
+
 	ragPrompt := rag.BuildRAGPrompt(query, docs)
 
 	// 5. 替换最后一条消息为 RAG 提示词
@@ -240,6 +242,8 @@ func (o *AliRAGModel) StreamResponse(ctx context.Context, messages []*schema.Mes
 	}
 
 	// 4. 构建包含检索结果的提示词
+	log.Printf("[RAG] user=%s mode=stream docs=%d query=%q", o.username, len(docs), query)
+
 	ragPrompt := rag.BuildRAGPrompt(query, docs)
 
 	// 5. 替换最后一条消息为 RAG 提示词

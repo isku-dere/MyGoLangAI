@@ -7,6 +7,7 @@ import (
 	sessiondao "GopherAI/dao/session"
 	"GopherAI/model"
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -102,18 +103,19 @@ func StreamMessageToExistingSession(userName string, sessionID string, userQuest
 	}
 
 	cb := func(msg string) {
-		// 直接发送数据，不转义
-		// SSE 格式：data: <content>\n\n
-		log.Printf("[SSE] Sending chunk: %s (len=%d)\n", msg, len(msg))
-		_, err := writer.Write([]byte("data: " + msg + "\n\n"))
+		payload, err := json.Marshal(map[string]string{"delta": msg})
+		if err != nil {
+			log.Println("[SSE] Marshal error:", err)
+			return
+		}
+		log.Printf("[SSE] Sending chunk len=%d", len(msg))
+		_, err = writer.Write([]byte("data: " + string(payload) + "\n\n"))
 		if err != nil {
 			log.Println("[SSE] Write error:", err)
 			return
 		}
-		flusher.Flush() //  每次必须 flush
-		log.Println("[SSE] Flushed")
+		flusher.Flush()
 	}
-
 	_, err_ := helper.StreamResponse(userName, ctx, cb, userQuestion)
 	if err_ != nil {
 		log.Println("StreamMessageToExistingSession StreamResponse error:", err_)

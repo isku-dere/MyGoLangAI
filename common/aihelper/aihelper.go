@@ -41,16 +41,27 @@ func (a *AIHelper) AddMessage(Content string, UserName string, IsUser bool, Save
 		UserName:  UserName,
 		IsUser:    IsUser,
 	}
+	a.mu.Lock()
 	a.messages = append(a.messages, &userMsg)
-	if Save {
-		a.saveFunc(&userMsg)
+	saveFunc := a.saveFunc
+	a.mu.Unlock()
+	if Save && saveFunc != nil {
+		saveFunc(&userMsg)
 	}
 }
 
 // SaveMessage 保存消息到数据库（通过回调函数避免循环依赖）
 // 通过传入func，自己调用外部的保存函数，即可支持同步异步等多种策略
 func (a *AIHelper) SetSaveFunc(saveFunc func(*model.Message) (*model.Message, error)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.saveFunc = saveFunc
+}
+
+func (a *AIHelper) SetModel(model AIModel) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.model = model
 }
 
 // GetMessages 获取所有消息历史
@@ -74,7 +85,11 @@ func (a *AIHelper) GenerateResponse(userName string, ctx context.Context, userQu
 	a.mu.RUnlock()
 
 	//调用模型生成回复
-	schemaMsg, err := a.model.GenerateResponse(ctx, messages)
+	a.mu.RLock()
+	aiModel := a.model
+	a.mu.RUnlock()
+
+	schemaMsg, err := aiModel.GenerateResponse(ctx, messages)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +113,11 @@ func (a *AIHelper) StreamResponse(userName string, ctx context.Context, cb Strea
 	messages := utils.ConvertToSchemaMessages(a.messages)
 	a.mu.RUnlock()
 
-	content, err := a.model.StreamResponse(ctx, messages, cb)
+	a.mu.RLock()
+	aiModel := a.model
+	a.mu.RUnlock()
+
+	content, err := aiModel.StreamResponse(ctx, messages, cb)
 	if err != nil {
 		return nil, err
 	}
@@ -118,5 +137,7 @@ func (a *AIHelper) StreamResponse(userName string, ctx context.Context, cb Strea
 
 // GetModelType 获取模型类型
 func (a *AIHelper) GetModelType() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	return a.model.GetModelType()
 }
