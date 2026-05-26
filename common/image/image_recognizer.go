@@ -117,21 +117,6 @@ func (r *ImageRecognizer) Close() {
 	}
 }
 
-func (r *ImageRecognizer) PredictFromFile(imagePath string) (string, error) {
-	file, err := os.Open(filepath.Clean(imagePath))
-	if err != nil {
-		return "", fmt.Errorf("image not found: %w", err)
-	}
-	defer file.Close()
-
-	img, _, err := image.Decode(file)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode image: %w", err)
-	}
-
-	return r.PredictFromImage(img)
-}
-
 func (r *ImageRecognizer) PredictFromBuffer(buf []byte) (string, error) {
 	img, _, err := image.Decode(bytes.NewReader(buf))
 	if err != nil {
@@ -140,11 +125,9 @@ func (r *ImageRecognizer) PredictFromBuffer(buf []byte) (string, error) {
 	return r.PredictFromImage(img)
 }
 
-
 func (r *ImageRecognizer) PredictFromImage(img image.Image) (string, error) {
 
 	resizedImg := image.NewRGBA(image.Rect(0, 0, r.inputW, r.inputH))
-
 
 	draw.CatmullRom.Scale(resizedImg, resizedImg.Bounds(), img, img.Bounds(), draw.Over, nil)
 
@@ -157,7 +140,6 @@ func (r *ImageRecognizer) PredictFromImage(img image.Image) (string, error) {
 			c := resizedImg.At(x, y)
 
 			r, g, b, _ := c.RGBA()
-
 
 			rf := float32(r>>8) / 255.0
 			gf := float32(g>>8) / 255.0
