@@ -4,3 +4,5 @@ deploy/config.runtime.toml
 deploy/acme
 *.log
 .codex
+vue-frontend/node_modules/
+vue-frontend/dist/

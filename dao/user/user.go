@@ -29,6 +29,13 @@ func IsExistUser(username string) (bool, *model.User) {
 	return true, user
 }
 
+func FindByUsernameOrEmail(identifier string) (bool, *model.User) {
+	if ok, user := IsExistUser(identifier); ok {
+		return true, user
+	}
+	return IsExistEmail(identifier)
+}
+
 func IsExistEmail(email string) (bool, *model.User) {
 	user, err := mysql.GetUserByEmail(email)
 

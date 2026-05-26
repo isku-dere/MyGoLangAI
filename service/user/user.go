@@ -14,8 +14,9 @@ import (
 func Login(username, password string) (string, code.Code) {
 	var userInformation *model.User
 	var ok bool
+	username = strings.TrimSpace(username)
 	//1:判断用户是否存在
-	if ok, userInformation = user.IsExistUser(username); !ok {
+	if ok, userInformation = user.FindByUsernameOrEmail(username); !ok {
 
 		return "", code.CodeUserNotExist
 	}

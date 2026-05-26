@@ -12,10 +12,10 @@
         :rules="loginRules"
         label-width="80px"
       >
-        <el-form-item label="用户名" prop="username">
+        <el-form-item label="账号或邮箱" prop="username">
           <el-input
             v-model="loginForm.username"
-            placeholder="请输入用户名"
+            placeholder="请输入账号或邮箱"
           />
         </el-form-item>
         <el-form-item label="密码" prop="password">
@@ -69,7 +69,7 @@ export default {
 
     const loginRules = {
       username: [
-        { required: true, message: '请输入用户名', trigger: 'blur' }
+        { required: true, message: '请输入账号或邮箱', trigger: 'blur' }
       ],
       password: [
         { required: true, message: '请输入密码', trigger: 'blur' },
