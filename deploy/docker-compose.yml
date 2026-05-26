@@ -81,7 +81,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d/gopherai.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
 
 volumes:
